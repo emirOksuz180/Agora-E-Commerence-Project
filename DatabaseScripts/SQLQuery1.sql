@@ -1,0 +1,171 @@
+CREATE DATABASE AgoraDb;
+
+GO
+
+USE AgoraDb;
+
+
+CREATE TABLE Roles (
+
+RoleId SMALLINT PRIMARY KEY ,
+RoleName NVARCHAR(50) NOT NULL UNIQUE
+
+);
+
+
+INSERT INTO Roles (RoleId , RoleName) VALUES
+(1 , 'User'),   
+( 2 , 'Admin'); 
+
+
+
+
+CREATE TABLE Users (
+
+UserId INT PRIMARY KEY IDENTITY (1,1),
+UserName  NVARCHAR(50) NOT NULL,
+FirstName  NVARCHAR(50) NOT NULL,
+LastName  NVARCHAR(50) NOT NULL,
+Email NVARCHAR(100) NOT NULL UNIQUE,
+HashedPassword VARBINARY(64) NOT NULL,
+RoleId SMALLINT NOT NULL ,
+RoleName NVARCHAR(50) NOT NULL UNIQUE,
+IsActive BIT NOT NULL DEFAULT 1,
+CreatedAt DATETIME DEFAULT GETDATE(),
+FOREIGN KEY (RoleId) REFERENCES Roles(RoleId),
+FOREIGN KEY (RoleName) REFERENCES Roles(RoleName)
+
+);
+
+
+INSERT INTO Users (UserName, FirstName, LastName, Email, HashedPassword, RoleId, RoleName)
+VALUES ('Emir180', 'Emir', 'Öksüz', 'emiroksuz035@gmail.com', CONVERT(VARBINARY(64),'root123') , 2, 'Admin');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE TABLE Categories(
+
+Id INT PRIMARY KEY IDENTITY(1,1),
+Name NVARCHAR(100) NOT NULL ,
+IsActive BIT NOT NULL DEFAULT 1
+
+
+);
+	
+
+CREATE TABLE Products (
+
+ProductId INT PRIMARY KEY IDENTITY(1,1),
+ProductName NVARCHAR(100) NOT NULL,
+ProductDescription NVARCHAR(500),
+Price DECIMAL(18,2) NOT NULL,
+Stock INT NOT NULL ,
+CategoryId INT NOT NULL ,
+ImageUrl NVARCHAR(255),
+IsActive BIT NOT NULL DEFAULT 1,
+CreatedAt DATETIME NOT NULL DEFAULT 1,
+FOREIGN KEY (CategoryId) REFERENCES Categories(Id)
+
+);
+
+
+
+CREATE TABLE Sliders (
+
+SliderId INT PRIMARY KEY IDENTITY(1,1),
+SliderTitle NVARCHAR(100),
+SliderDescription NVARCHAR(200),
+ImageUrl NVARCHAR(250) NOT NULL,
+IsActive BIT NOT NULL DEFAULT 1,
+DisplayOrder SMALLINT NOT NULL
+
+);
+
+
+
+
+CREATE TABLE Orders (
+
+OrderId INT PRIMARY KEY IDENTITY(1,1),
+UserId INT NOT NULL ,
+TotalAmount DECIMAL(18,2) NOT NULL,
+CreatedAt  DATETIME NOT NULL  DEFAULT GETDATE(),
+Status NVARCHAR(50) NOT NULL,
+FOREIGN KEY (UserId) REFERENCES Users(UserID)
+
+);
+
+
+CREATE TABLE OrderDetails (
+
+Id INT PRIMARY KEY IDENTITY(1,1),
+OrderId INT NOT NULL,
+ProductId INT NOT NULL,
+Quantity INT NOT NULL,
+UnitPrice DECIMAL(18,2) NOT NULL,
+FOREIGN KEY (OrderId) REFERENCES Orders(OrderId),
+FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
+
+);
+
+
+
+
+CREATE TABLE userMessages(
+
+MessageId INT PRIMARY KEY IDENTITY(1,1),
+FullName NVARCHAR(100),
+Email NVARCHAR(100),
+MessageSubject NVARCHAR(200),
+Content NVARCHAR(500),
+CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+IsRead BIT NOT NULL DEFAULT 0
+
+);
+
+
+
+CREATE TABLE Comments (
+
+CommentId INT PRIMARY KEY  IDENTITY(1,1),
+UserID INT NOT NULL,
+ProductId INT NOT NULL ,
+CommentText NVARCHAR(500) NOT NULL,
+CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+FOREIGN KEY (UserID) REFERENCES Users(UserId),
+FOREIGN KEY  (ProductId) REFERENCES  Products(ProductId)
+
+);
+
+
+CREATE TABLE SuperAdmin (
+    Id INT PRIMARY KEY IDENTITY(1,1),
+    Username NVARCHAR(100) NOT NULL,
+    PasswordHash VARBINARY(64) NOT NULL 
+);
+
+
+
+
+
+
+
+
+INSERT INTO SuperAdmin (Username, PasswordHash)
+VALUES (
+    'superadmin',CONVERT(VARBINARY(256), 'd1mple180')
+);
+

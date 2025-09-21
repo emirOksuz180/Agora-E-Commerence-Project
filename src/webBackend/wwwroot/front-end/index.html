@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/css/bootstrap.min.css" integrity="sha512-fw7f+TcMjTb7bpbLJZlP8g2Y4XcCyFZW8uy8HsRZsH/SwbMw0plKHFHr99DN3l04VsYNwvzicUX/6qurvIxbxw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
+      integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="css/style.css">
+    <title>Agora</title>
+  </head>
+
+  <body class="bg-light">
+    <header>
+      <section class="top-bar">
+        <div class="container">
+          <div class="row gy-2 align-items-center">
+            <div class="col-lg-2 col-sm-4 col-4">
+              <a href="index.html" class="navbar-brand fw-bold">
+                <i class="fa-solid fa-building-columns"></i>Agora
+              </a>
+            </div>
+
+            <div class="col-lg-5 col-sm-8 col-8 order-lg-last">
+              <div class="text-end">
+                <a href="#" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#loginModal">
+                  <i class="fa fa-user"></i>
+                  <span class="ms-1 d-none d-sm-inline-block">Giriş Yap</span>
+                </a>
+                <a href="#" class="btn btn-light">
+                  <i class="fa fa-heart"></i>
+                  <span class="ms-1 d-none d-sm-inline-block">Listem</span>
+                </a>
+                <a href="shopping-cart.html" class="btn btn-light">
+                  <i class="fa fa-shopping-cart"></i>
+                  <span class="ms-1 d-none d-sm-inline-block">Sepetim</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="col-lg-5 col-sm-12">
+              <form>
+                <div class="input-group">
+                  <input type="text" placeholder="Anahtar kelime" class="form-control rounded">
+                  <button class="btn btn-primary">
+                    <i class="fa fa-search"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="navbar navbar-dark bg-primary navbar-expand-lg">
+        <div class="container">
+          <button
+            type="button"
+            class="navbar-toggler"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbar"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbar">
+            <ul class="navbar-nav">
+              <li class="nav-item">
+                <a href="#" class="nav-link ps-0">Elektronik</a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link">Kitap</a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link">Spor</a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link">Giyim</a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link">Market</a>
+              </li>
+              <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Diğer Kategoriler</a>
+                <ul class="dropdown-menu">
+                  <li><a href="#" class="dropdown-item">Kategori 1</a></li>
+                  <li><a href="#" class="dropdown-item">Kategori 2</a></li>
+                  <li><a href="#" class="dropdown-item">Kategori 3</a></li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <section class="mt-3">
+      <div class="container">
+        <div class="card p-auto">
+          <div class="row p-1 p-lg-2 gx-2">
+            <div class="col-lg-3 d-none d-lg-block">
+              <nav class="nav nav-pills flex-column flex-nowrap overflow-auto slide_nav">
+                <a href="#" class="nav-link active">Elektronik</a>
+                <a href="#" class="nav-link">Giyim</a>
+                <a href="#" class="nav-link">Spor</a>
+                <a href="#" class="nav-link">Kitap</a>
+                <a href="#" class="nav-link">Kozmetik</a>
+                <a href="#" class="nav-link">Anne/Bebek</a>
+              </nav>
+            </div>
+
+            <div class="col-lg-9">
+              <!-- slider -->
+              <div id="slider" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-indicators">
+                  <button type="button" data-bs-target="#slider" data-bs-slide-to="0" class="active"></button>
+                  <button type="button" data-bs-target="#slider" data-bs-slide-to="1"></button>
+                  <button type="button" data-bs-target="#slider" data-bs-slide-to="2"></button>
+                </div>
+
+                <div class="carousel-inner">
+                  <div class="carousel-item active">
+                    <img src="img/slider-1.jpeg" alt="slider-1" class="d-block w-100">
+                  </div>
+                  <div class="carousel-item">
+                    <img src="img/slider-2.jpeg" alt="slider-2" class="d-block w-100">
+                  </div>
+                  <div class="carousel-item">
+                    <img src="img/slider-3.jpeg" alt="slider-3" class="d-block w-100">
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  class="carousel-control-prev"
+                  data-bs-target="#slider"
+                  data-bs-slide="prev"
+                >
+                  <span class="carousel-control-prev-icon"></span>
+                </button>
+
+                <button
+                  type="button"
+                  class="carousel-control-next"
+                  data-bs-target="#slider"
+                  data-bs-slide="next"
+                >
+                  <span class="carousel-control-next-icon"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-3">
+      <div class="container">
+        <h3 class="h4 mb-1 mb-lg-3">Son Eklenenler</h3>
+
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4">
+          <div class="col">
+            <div class="card shadow mb-3">
+              <div class="img-wrap">
+                <span class="badge bg-success">İndirim</span>
+                <img src="img/1.jpeg" alt="ürün-1" class="card-img-top">
+              </div>
+              <div class="border-top info-wrap">
+                <a href="#" class="float-end btn btn-light">
+                  <i class="fa fa-heart"></i>
+                </a>
+                <a href="details.html" class="title text-truncate">Apple Watch Yıldız Işığı Aliminyum Kasa ve Spor Kordon</a>
+                <div class="price-wrap">
+                  <span class="price-discount">45.999 ₺</span>
+                  <del class="price">49.999 ₺</del>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card shadow">
+              <div class="img-wrap">
+                <span class="badge bg-success">İndirim</span>
+                <img src="img/2.jpeg" alt="ürün-1" class="card-img-top">
+              </div>
+              <div class="border-top info-wrap">
+                <a href="#" class="float-end btn btn-light">
+                  <i class="fa fa-heart"></i>
+                </a>
+                <a href="details.html" class="title text-truncate">Apple Watch Yıldız Işığı Aliminyum Kasa ve Spor Kordon</a>
+                <div class="price-wrap">
+                  <span class="price-discount">45.999 ₺</span>
+                  <del class="price">49.999 ₺</del>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card shadow">
+              <div class="img-wrap">
+                <span class="badge bg-success">İndirim</span>
+                <img src="img/3.jpeg" alt="ürün-1" class="card-img-top">
+              </div>
+              <div class="border-top info-wrap">
+                <a href="#" class="float-end btn btn-light">
+                  <i class="fa fa-heart"></i>
+                </a>
+                <a href="details.html" class="title text-truncate">Apple Watch Yıldız Işığı Aliminyum Kasa ve Spor Kordon</a>
+                <div class="price-wrap">
+                  <span class="price-discount">45.999 ₺</span>
+                  <del class="price">49.999 ₺</del>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card shadow">
+              <div class="img-wrap">
+                <span class="badge bg-success">İndirim</span>
+                <img src="img/4.jpeg" alt="ürün-1" class="card-img-top">
+              </div>
+              <div class="border-top info-wrap">
+                <a href="#" class="float-end btn btn-light">
+                  <i class="fa fa-heart"></i>
+                </a>
+                <a href="details.html" class="title text-truncate">Apple Watch Yıldız Işığı Aliminyum Kasa ve Spor Kordon</a>
+                <div class="price-wrap">
+                  <span class="price-discount">45.999 ₺</span>
+                  <del class="price">49.999 ₺</del>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card shadow">
+              <div class="img-wrap">
+                <span class="badge bg-success">İndirim</span>
+                <img src="img/5.jpeg" alt="ürün-1" class="card-img-top">
+              </div>
+              <div class="border-top info-wrap">
+                <a href="#" class="float-end btn btn-light">
+                  <i class="fa fa-heart"></i>
+                </a>
+                <a href="details.html" class="title text-truncate">Apple Watch Yıldız Işığı Aliminyum Kasa ve Spor Kordon</a>
+                <div class="price-wrap">
+                  <span class="price-discount">45.999 ₺</span>
+                  <del class="price">49.999 ₺</del>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="card shadow">
+              <div class="img-wrap">
+                <span class="badge bg-success">İndirim</span>
+                <img src="img/6.jpeg" alt="ürün-1" class="card-img-top">
+              </div>
+              <div class="border-top info-wrap">
+                <a href="#" class="float-end btn btn-light">
+                  <i class="fa fa-heart"></i>
+                </a>
+                <a href="details.html" class="title text-truncate">Apple Watch Yıldız Işığı Aliminyum Kasa ve Spor Kordon</a>
+                <div class="price-wrap">
+                  <span class="price-discount">45.999 ₺</span>
+                  <del class="price">49.999 ₺</del>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Giriş Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginModalLabel">
+              <i class="fa fa-sign-in-alt me-2"></i>Giriş Yap
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="login-alert" class="alert alert-danger" style="display: none;">
+              <i class="fa-solid fa-circle-exclamation me-2"></i>
+              <span id="login-alert-message">Email ya da parola hatalı</span>
+            </div>
+            
+            <form id="loginForm">
+              <div class="mb-3">
+                <label for="loginEmail" class="form-label">Email</label>
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="fa fa-envelope"></i>
+                  </span>
+                  <input type="email" class="form-control" id="loginEmail" required>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="loginPassword" class="form-label">Parola</label>
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="fa fa-lock"></i>
+                  </span>
+                  <input type="password" class="form-control" id="loginPassword" required>
+                </div>
+              </div>
+              
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fa fa-sign-in-alt me-2"></i>Giriş Yap
+                </button>
+              </div>
+            </form>
+            
+            <hr class="my-3">
+            
+            <div class="text-center">
+              <small class="text-muted">
+                Hesabınız yok mu? 
+                <a href="#" class="text-decoration-none" onclick="showRegisterForm()">Hesap oluşturun</a>
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kayıt Modal -->
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="registerModalLabel">
+              <i class="fa fa-user-plus me-2"></i>Hesap Oluştur
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="register-alert" class="alert alert-danger" style="display: none;">
+              <i class="fa-solid fa-circle-exclamation me-2"></i>
+              <span id="register-alert-message">Kayıt işlemi başarısız</span>
+            </div>
+            
+            <form id="registerForm">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="registerFirstName" class="form-label">Ad</label>
+                  <input type="text" class="form-control" id="registerFirstName" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="registerLastName" class="form-label">Soyad</label>
+                  <input type="text" class="form-control" id="registerLastName" required>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerUsername" class="form-label">Kullanıcı Adı</label>
+                <input type="text" class="form-control" id="registerUsername" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerEmail" class="form-label">Email</label>
+                <input type="email" class="form-control" id="registerEmail" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerPassword" class="form-label">Parola</label>
+                <input type="password" class="form-control" id="registerPassword" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerPasswordConfirm" class="form-label">Parola Tekrar</label>
+                <input type="password" class="form-control" id="registerPasswordConfirm" required>
+              </div>
+              
+              <div class="d-grid">
+                <button type="submit" class="btn btn-success">
+                  <i class="fa fa-user-plus me-2"></i>Hesap Oluştur
+                </button>
+              </div>
+            </form>
+            
+            <hr class="my-3">
+            
+            <div class="text-center">
+              <small class="text-muted">
+                Zaten hesabınız var mı? 
+                <a href="#" class="text-decoration-none" onclick="showLoginForm()">Giriş yapın</a>
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="mt-3 py-4 bg-primary">
+      <div class="container">
+        <div class="row gy-3">
+          <div class="col-md-6 col-lg-4">
+            <form>
+              <div class="input-group">
+                <input type="email" class="form-control rounded ms-1" placeholder="Email">
+                <button type="button" class="btn btn-outline-warning rounded">Abone Ol</button>
+              </div>
+            </form>
+          </div>
+          <div class="col-md-6 col-lg-8">
+            <nav class="text-center text-md-end text-lg-end">
+              <a href="#" class=" btn btn-icon btn-outline-warning">
+                <i class="fab fa-facebook"></i>
+              </a>
+              <a href="#" class="btn btn-icon btn-outline-warning">
+                <i class="fab fa-instagram"></i>
+              </a>
+              <a href="#" class="btn btn-icon btn-outline-warning">
+                <i class="fab fa-youtube"></i>
+              </a>
+              <a href="#" class=" btn btn-icon btn-outline-warning">
+                <i class="fa-brands fa-x-twitter"></i>
+              </a>
+            </nav>
+          </div>
+
+          <div class="col-12">
+            <p class="text-center text-md-start text-white">
+              @2026 Tüm hakları saklıdır
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </footer>
+
+    <!-- Auth JavaScript -->
+    <script>
+      // Sayfa yüklendiğinde event listener'ları kur
+      document.addEventListener('DOMContentLoaded', function() {
+        setupEventListeners();
+      });
+      
+      function setupEventListeners() {
+        // Giriş formu submit
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+          e.preventDefault();
+          login();
+        });
+        
+        // Kayıt formu submit
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+          e.preventDefault();
+          register();
+        });
+      }
+      
+      async function login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            
+            // Modal'ı kapat
+            const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+            modal.hide();
+            
+            // Form'u temizle
+            document.getElementById('loginForm').reset();
+            document.getElementById('login-alert').style.display = 'none';
+            
+            // Başarı mesajı
+            showSuccessMessage('Başarıyla giriş yaptınız!');
+            
+          } else {
+            const error = await response.json();
+            showLoginError(error.message || 'Giriş başarısız');
+          }
+        } catch (error) {
+          showLoginError('Bağlantı hatası oluştu');
+        }
+      }
+      
+      async function register() {
+        const firstName = document.getElementById('registerFirstName').value;
+        const lastName = document.getElementById('registerLastName').value;
+        const username = document.getElementById('registerUsername').value;
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+        
+        if (password !== passwordConfirm) {
+          showRegisterError('Parolalar eşleşmiyor');
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              firstName, 
+              lastName, 
+              username, 
+              email, 
+              password 
+            })
+          });
+          
+          if (response.ok) {
+            // Kayıt başarılı, giriş formunu göster
+            showLoginForm();
+            showSuccessMessage('Hesabınız başarıyla oluşturuldu! Giriş yapabilirsiniz.');
+          } else {
+            const error = await response.json();
+            showRegisterError(error.message || 'Kayıt başarısız');
+          }
+        } catch (error) {
+          showRegisterError('Bağlantı hatası oluştu');
+        }
+      }
+      
+      function showLoginError(message) {
+        const alert = document.getElementById('login-alert');
+        const messageSpan = document.getElementById('login-alert-message');
+        messageSpan.textContent = message;
+        alert.style.display = 'block';
+      }
+      
+      function showRegisterError(message) {
+        const alert = document.getElementById('register-alert');
+        const messageSpan = document.getElementById('register-alert-message');
+        messageSpan.textContent = message;
+        alert.style.display = 'block';
+      }
+      
+      function showLoginForm() {
+        const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+        const registerModal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+        registerModal.hide();
+        loginModal.show();
+      }
+      
+      function showRegisterForm() {
+        const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+        const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+        loginModal.hide();
+        registerModal.show();
+      }
+      
+      function showSuccessMessage(message) {
+        // Basit bir başarı mesajı göster
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+          <i class="fa fa-check-circle me-2"></i>${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // 3 saniye sonra otomatik kaldır
+        setTimeout(() => {
+          if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+          }
+        }, 3000);
+      }
+    </script>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/js/bootstrap.bundle.min.js"
+      integrity="sha512-Tc0i+vRogmX4NN7tuLbQfBxa8JkfUSAxSFVzmU31nVdHyiHElPPy2cWfFacmCJKw0VqovrzKhdd2TSTMdAxp2g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+  </body>
+</html>

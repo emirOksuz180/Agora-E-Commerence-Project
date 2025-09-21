@@ -1,0 +1,39 @@
+<section class="top-bar">
+        <div class="container">
+          <div class="row gy-2 align-items-center">
+            <div class="col-lg-2 col-sm-4 col-4">
+              <a href="/" class="navbar-brand fw-bold">
+                <i class="fa-solid fa-building-columns"></i>Agora
+              </a>
+            </div>
+
+            <div class="col-lg-5 col-sm-8 col-8 order-lg-last">
+              <div class="text-end">
+                <a href="#" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#loginModal">
+                  <i class="fa fa-user"></i>
+                  <span class="ms-1 d-none d-sm-inline-block">Giriş Yap</span>
+                </a>
+                <a href="#" class="btn btn-light">
+                  <i class="fa fa-heart"></i>
+                  <span class="ms-1 d-none d-sm-inline-block">Listem</span>
+                </a>
+                <a href="shopping-cart.html" class="btn btn-light">
+                  <i class="fa fa-shopping-cart"></i>
+                  <span class="ms-1 d-none d-sm-inline-block">Sepetim</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="col-lg-5 col-sm-12">
+              <form asp-controller="Urun" asp-action="List" method="get">
+                <div class="input-group">
+                  <input name= "q" type="text" placeholder="Anahtar kelime" class="form-control rounded" value="@ViewData["q"]">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-search"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>

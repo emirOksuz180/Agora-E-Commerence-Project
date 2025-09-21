@@ -1,0 +1,2 @@
+ALTER TABLE Categories
+ADD Url NVARCHAR(255) NOT NULL DEFAULT 'default-url';

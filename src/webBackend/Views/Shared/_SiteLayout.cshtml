@@ -1,0 +1,307 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/css/bootstrap.min.css" integrity="sha512-fw7f+TcMjTb7bpbLJZlP8g2Y4XcCyFZW8uy8HsRZsH/SwbMw0plKHFHr99DN3l04VsYNwvzicUX/6qurvIxbxw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
+      integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="~/css/site.css">
+    <title>Agora</title>
+  </head>
+
+  <body class="bg-light">
+    <header>
+      @await Html.PartialAsync("Partials/Site/_Topbar")
+      @await Component.InvokeAsync("Navbar")      
+    </header>
+
+    
+
+    <!-- Giriş Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginModalLabel">
+              <i class="fa fa-sign-in-alt me-2"></i>Giriş Yap
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="login-alert" class="alert alert-danger" style="display: none;">
+              <i class="fa-solid fa-circle-exclamation me-2"></i>
+              <span id="login-alert-message">Email ya da parola hatalı</span>
+            </div>
+            
+            <form id="loginForm">
+              <div class="mb-3">
+                <label for="loginEmail" class="form-label">Email</label>
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="fa fa-envelope"></i>
+                  </span>
+                  <input type="email" class="form-control" id="loginEmail" required>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="loginPassword" class="form-label">Parola</label>
+                <div class="input-group">
+                  <span class="input-group-text">
+                    <i class="fa fa-lock"></i>
+                  </span>
+                  <input type="password" class="form-control" id="loginPassword" required>
+                </div>
+              </div>
+              
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fa fa-sign-in-alt me-2"></i>Giriş Yap
+                </button>
+              </div>
+            </form>
+            
+            <hr class="my-3">
+            
+            <div class="text-center">
+              <small class="text-muted">
+                Hesabınız yok mu? 
+                <a href="#" class="text-decoration-none" onclick="showRegisterForm()">Hesap oluşturun</a>
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kayıt Modal -->
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="registerModalLabel">
+              <i class="fa fa-user-plus me-2"></i>Hesap Oluştur
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="register-alert" class="alert alert-danger" style="display: none;">
+              <i class="fa-solid fa-circle-exclamation me-2"></i>
+              <span id="register-alert-message">Kayıt işlemi başarısız</span>
+            </div>
+            
+            <form id="registerForm">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="registerFirstName" class="form-label">Ad</label>
+                  <input type="text" class="form-control" id="registerFirstName" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="registerLastName" class="form-label">Soyad</label>
+                  <input type="text" class="form-control" id="registerLastName" required>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerUsername" class="form-label">Kullanıcı Adı</label>
+                <input type="text" class="form-control" id="registerUsername" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerEmail" class="form-label">Email</label>
+                <input type="email" class="form-control" id="registerEmail" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerPassword" class="form-label">Parola</label>
+                <input type="password" class="form-control" id="registerPassword" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="registerPasswordConfirm" class="form-label">Parola Tekrar</label>
+                <input type="password" class="form-control" id="registerPasswordConfirm" required>
+              </div>
+              
+              <div class="d-grid">
+                <button type="submit" class="btn btn-success">
+                  <i class="fa fa-user-plus me-2"></i>Hesap Oluştur
+                </button>
+              </div>
+            </form>
+            
+            <hr class="my-3">
+            
+            <div class="text-center">
+              <small class="text-muted">
+                Zaten hesabınız var mı? 
+                <a href="#" class="text-decoration-none" onclick="showLoginForm()">Giriş yapın</a>
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      @RenderBody()
+    </main>
+
+    
+
+    @await Html.PartialAsync("Partials/Site/_Footer")
+
+    
+
+    <script>
+
+      document.addEventListener('DOMContentLoaded', function() {
+        setupEventListeners();
+      });
+      
+      function setupEventListeners() {
+        
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+          e.preventDefault();
+          login();
+        });
+        
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+          e.preventDefault();
+          register();
+        });
+      }
+      
+      async function login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+            modal.hide();
+            
+            document.getElementById('loginForm').reset();
+            document.getElementById('login-alert').style.display = 'none';
+            
+            showSuccessMessage('Başarıyla giriş yaptınız!');
+            
+          } else {
+            const error = await response.json();
+            showLoginError(error.message || 'Giriş başarısız');
+          }
+        } catch (error) {
+          showLoginError('Bağlantı hatası oluştu');
+        }
+      }
+      
+      async function register() {
+        const firstName = document.getElementById('registerFirstName').value;
+        const lastName = document.getElementById('registerLastName').value;
+        const username = document.getElementById('registerUsername').value;
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+        
+        if (password !== passwordConfirm) {
+          showRegisterError('Parolalar eşleşmiyor');
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              firstName, 
+              lastName, 
+              username, 
+              email, 
+              password 
+            })
+          });
+          
+          if (response.ok) {
+            showLoginForm();
+            showSuccessMessage('Hesabınız başarıyla oluşturuldu! Giriş yapabilirsiniz.');
+          } else {
+            const error = await response.json();
+            showRegisterError(error.message || 'Kayıt başarısız');
+          }
+        } catch (error) {
+          showRegisterError('Bağlantı hatası oluştu');
+        }
+      }
+      
+      function showLoginError(message) {
+        const alert = document.getElementById('login-alert');
+        const messageSpan = document.getElementById('login-alert-message');
+        messageSpan.textContent = message;
+        alert.style.display = 'block';
+      }
+      
+      function showRegisterError(message) {
+        const alert = document.getElementById('register-alert');
+        const messageSpan = document.getElementById('register-alert-message');
+        messageSpan.textContent = message;
+        alert.style.display = 'block';
+      }
+      
+      function showLoginForm() {
+        const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+        const registerModal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+        registerModal.hide();
+        loginModal.show();
+      }
+      
+      function showRegisterForm() {
+        const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+        const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+        loginModal.hide();
+        registerModal.show();
+      }
+      
+      function showSuccessMessage(message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+          <i class="fa fa-check-circle me-2"></i>${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+          if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+          }
+        }, 3000);
+      }
+    </script>
+
+    <script src="~/js/fslightbox.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/js/bootstrap.bundle.min.js"
+      integrity="sha512-Tc0i+vRogmX4NN7tuLbQfBxa8JkfUSAxSFVzmU31nVdHyiHElPPy2cWfFacmCJKw0VqovrzKhdd2TSTMdAxp2g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+  </body>
+</html>
