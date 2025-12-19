@@ -1,28 +1,19 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using webBackend.Models; 
-using webBackend.Models.Email;
+using webBackend.Models;
+using Microsoft.Extensions.Options;
+
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+builder.Services.AddTransient<IEmailService , SmtpEmailService>();
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
-
-// API Controller desteği
-builder.Services.AddControllers();
-
-// CORS ayarları
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        builder =>
-        {
-            builder.AllowAnyOrigin()
-                   .AllowAnyMethod()
-                   .AllowAnyHeader();
-        });
-});
 
 builder.Services.AddDbContext<AgoraDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sql =>
@@ -30,62 +21,67 @@ builder.Services.AddDbContext<AgoraDbContext>(options =>
         sql.EnableRetryOnFailure(3);
     }));
 
-// Identity DbContext and Identity
-builder.Services.AddDbContext<AppIdentityDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+
 
 builder.Services
-    .AddIdentity<IdentityUser, IdentityRole>(options =>
-    {
-        options.Password.RequireDigit = true;
-        options.Password.RequireLowercase = true;
-        options.Password.RequireUppercase = false;
-        options.Password.RequireNonAlphanumeric = false;
-        options.Password.RequiredLength = 6;
-        options.SignIn.RequireConfirmedEmail = true;
-    })
-    .AddEntityFrameworkStores<AppIdentityDbContext>()
+    .AddIdentity<AppUser, AppRole>()
+    .AddEntityFrameworkStores<AgoraDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.Cookie.HttpOnly = true;
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
-    options.LogoutPath = "/Account/Logout";
-    options.SlidingExpiration = true;
 });
 
 
 
+
+
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireDigit = false;
+
+
+    options.User.RequireUniqueEmail = true;
+    // options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyz0123456789@_-.";
+
+
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+});
+
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+   options.LoginPath = "/Account/Login";
+   options.AccessDeniedPath = "/Account/AccesDenied" ;
+   options.ExpireTimeSpan = TimeSpan.FromDays(30);
+   options.SlidingExpiration = true;
+});
+
 var app = builder.Build();
 
-await RoleSeeder.SeedAsync(app.Services);
-
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
-
-// Cors
-app.UseCors("AllowAll");
-
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
-// API route
-app.MapControllers();
-
+// app.MapStaticAssets();
+app.UseStaticFiles();
 
 app.MapControllerRoute(
 
@@ -98,6 +94,55 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
+
+
+
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
+
+    // ADMIN ROLE
+    if (!await roleManager.RoleExistsAsync("Admin"))
+    {
+        await roleManager.CreateAsync(new AppRole
+        {
+            Name = "Admin"
+        });
+    }
+
+    // ADMIN USER
+    var adminEmail = "emiroksuz035@gmail.com";
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+    if (adminUser == null)
+    {
+        adminUser = new AppUser
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            AdSoyad = "Emir Öksüz"
+        };
+
+        await userManager.CreateAsync(adminUser, "Admin123");
+        await userManager.AddToRoleAsync(adminUser, "Admin");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,0 +1,22 @@
+@model Category
+
+@{
+  Layout = "_AdminLayout";
+}
+
+<div class="row">
+  <div class="col">
+    <div class="card">
+       <div class="card-body text-center">
+          <p>
+            @Model.Name isimli kategoriyi silmek istiyor musunuz ?
+          </p>
+          <form asp-controller="Kategori" asp-action="DeleteConfirm" method="post">
+            <input type="hidden" name="Id" value="@Model.Id">
+            <button type="submit" class="btn btn-danger" style="width: 300px; border-radius: 40px;">Sil</button>
+            <a class="btn btn-primary" style="width: 300px; border-radius: 40px;" asp-controller="Kategori" asp-action="Index">İptal</a>
+          </form>
+       </div>
+    </div>
+  </div>
+</div>

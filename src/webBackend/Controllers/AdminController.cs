@@ -1,11 +1,14 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+// using Microsoft.AspNetCore.Authorization;
+// using Microsoft.AspNetCore.Mvc;
+// using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace webBackend.Controllers;
 
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
-[Authorize(Roles = "Admin,SuperAdmin")]
+
+[Authorize(Roles = "Admin")]
 public class AdminController: Controller
 {
   public ActionResult Index()

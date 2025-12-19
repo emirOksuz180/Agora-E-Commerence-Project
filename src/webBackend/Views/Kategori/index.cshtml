@@ -10,11 +10,14 @@
         <div class="card shadow">
           <div class="card-header py-1 d-flex justify-content-between align-items-center">
             <h5 class="card-title">Kategoriler</h5>
-            <a asp-asp-controller="Kategori" asp-action="Create" class="btn btn-sm btn-primary">
+            <a asp-controller="Kategori" asp-action="Create" class="btn btn-sm btn-primary">
               <i class="fa-solid fa-plus"></i>
             </a>
           </div>
           <div class="card-body">
+            
+            
+
             <div class="table-responsive">
               <table class="table table-bordered table spriped mb-0">
               <thead class="table-secondary">
@@ -23,7 +26,7 @@
                   <th>Kategori Adı</th>
                   <th>URL</th>
                   <th>Ürün Sayısı</th>
-                  <th style="width: 90px;"></th>
+                  <th style="width: 150px;"></th>
                 </tr>
               </thead>
               <tbody>
@@ -31,16 +34,23 @@
               @foreach(var cat in Model) {
                 <tr>                  
                   <td>@cat.Id</td>
-                  <td>@cat.KategoriAdi</td>
+                  <td>@cat.Name</td>
                   <td>@cat.Url</td>
-                  <td>@cat.UrunSayisi</td>
-                  <td class="d-flex">
-                    <a href="kategoriEkle.html" class="btn btn-primary btn-sm me-2">
+                  <td>@cat.ProductCount</td>
+                  <td style="wdith: 150px;">
+                    <a asp-controller="Kategori" asp-action="Edit" asp-route-id="@cat.Id" class="btn btn-primary btn-sm me-2">
                       <i class="fa-solid fa-pen-to-square"></i>
                     </a>
-                    <a href="urun.html" class="btn btn-primary btn-sm">
+                    <a asp-controller="Urun" asp-route-kategori = "@cat.Id" class="btn btn-primary btn-sm">
                       <i class="fa-solid fa-right-long"></i>
                     </a>
+                    @if(cat.ProductCount == 0) {
+                      <a asp-controller="Kategori" asp-action="Delete" asp-route-id="@cat.Id" class="btn btn-danger btn-sm me-2">
+                        <i class="fa-solid fa-trash"></i>
+                      </a>
+                    }
+
+                    
                   </td>
                 </tr>
               }
@@ -51,4 +61,4 @@
           </div>
         </div>
       </div>
-    </div>
+</div>

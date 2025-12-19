@@ -1,8 +1,32 @@
-@{
-    ViewData["Title"] = "Erişim Reddedildi";
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 }
 
-<h2>Erişim Reddedildi</h2>
-<p>Bu sayfayı görüntülemek için yetkiniz yok.</p>
+@section Bar {
+    <section class="bg-primary p-3">
+        <div class="container">
+          <nav>
+            <ol class="breadcrumb mb-0">
+              <li class="breadcrumb-item">
+                <a href="#">Anasayfa</a>
+              </li>
+              <li class="breadcrumb-item">
+                Yetkisiz Erişim
+              </li>
+            </ol>
+          </nav>
+        </div>
+      </section>
+}
 
+
+
+<section class="d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="container">
+        <div class="alert alert-danger">
+            Yetki Gerektiren Bir kaynak
+        </div>
+    </div>
+</section>
 

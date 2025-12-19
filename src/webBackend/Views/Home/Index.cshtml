@@ -1,105 +1,146 @@
-﻿
+﻿@using Duende.IdentityServer.Extensions
 @model List<Product>
+@using Microsoft.AspNetCore.Identity
+@using webBackend.Models   
 
+
+@section Bar {
+    @await Component.InvokeAsync("Navbar")
+}
+
+@inject UserManager<AppUser> UserManager
+
+@{
+    AppUser? currentUser = null;
+
+    if (User?.Identity?.IsAuthenticated ?? false)
+    {
+        currentUser = await UserManager.GetUserAsync(User);
+    }
+}
 
 <section class="mt-3">
-      <div class="container">
+    <div class="container">
         <div class="mb-3">
-          @if (User?.Identity?.IsAuthenticated ?? false)
-          {
-            <div class="alert alert-success d-flex justify-content-between align-items-center">
-              <div>
-                <strong>Giriş yapıldı:</strong> @User.Identity!.Name
-              </div>
-              <form asp-controller="Account" asp-action="Logout" method="post">
-                <button class="btn btn-sm btn-outline-danger" type="submit">Çıkış</button>
-              </form>
-            </div>
-          }
-          else
-          {
-            if (TempData["RegisterInfo"] is not null)
+
+            @if (User?.Identity?.IsAuthenticated ?? false)
             {
-              <div class="alert alert-info">@TempData["RegisterInfo"]</div>
-            }
-            if (TempData["ConfirmSuccess"] is not null)
-            {
-              <div class="alert alert-success">@TempData["ConfirmSuccess"]</div>
-            }
-            if (TempData["ConfirmError"] is not null)
-            {
-              <div class="alert alert-danger">@TempData["ConfirmError"]</div>
-            }
-            <div class="row g-3">
-              <div class="col-md-6">
-                <div class="card p-3">
-                  <h5 class="mb-3">Giriş Yap</h5>
-                  @if (TempData["LoginError"] is not null)
-                  {
-                    <div class="alert alert-danger">@TempData["LoginError"]</div>
-                  }
-                  <form asp-controller="Home" asp-action="Login" method="post">
-                    <div class="mb-2">
-                      <label class="form-label">Email</label>
-                      <input class="form-control" name="email" type="email" required />
+                <div id="loginAlert"
+                     class="alert alert-success fade show d-flex justify-content-between align-items-center">
+                    <div>
+                        @if (currentUser != null)
+                        {
+                            <strong>Merhaba,</strong> <strong>@currentUser.AdSoyad</strong> 
+                        }
                     </div>
-                    <div class="mb-2">
-                      <label class="form-label">Şifre</label>
-                      <input class="form-control" name="password" type="password" required />
-                    </div>
-                    <button class="btn btn-primary" type="submit">Giriş</button>
-                  </form>
                 </div>
-              </div>
-              <div class="col-md-6">
-                <div class="card p-3">
-                  <h5 class="mb-3">Kayıt Ol</h5>
-                  @if (TempData["RegisterError"] is not null)
-                  {
-                    <div class="alert alert-danger">@TempData["RegisterError"]</div>
-                  }
-                  <form asp-controller="Home" asp-action="Register" method="post">
-                    <div class="mb-2">
-                      <label class="form-label">Email</label>
-                      <input class="form-control" name="email" type="email" required />
+
+                <div class="card p-auto">
+                    <div class="row p-1 p-lg-2 gx-2">
+
+                        <div class="col-lg-3 d-none d-lg-block">
+                            @await Html.PartialAsync(
+                                "Partials/Site/_Menu",
+                                ViewData["Kategoriler"]
+                            )
+                        </div>
+
+                        <div class="col-lg-9">
+                            <!-- slider -->
+                            @await Component.InvokeAsync("Slider")
+                        </div>
+
                     </div>
-                    <div class="mb-2">
-                      <label class="form-label">Şifre</label>
-                      <input class="form-control" name="password" type="password" required />
-                    </div>
-                    <button class="btn btn-success" type="submit">Kaydol</button>
-                  </form>
                 </div>
-              </div>
-            </div>
-          }
-        </div>
-        <div class="card p-auto">
-          <div class="row p-1 p-lg-2 gx-2">
-            <div class="col-lg-3 d-none d-lg-block">
-              @await Html.PartialAsync("Partials/Site/_Menu" , ViewData["Kategoriler"])
-            </div>
-
-            <div class="col-lg-9">
-              <!-- slider -->
-              @await Component.InvokeAsync("Slider")
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="mt-3">
-      <div class="container">
-        <h3 class="h4 mb-1 mb-lg-3">Son Eklenenler</h3>
-
-          <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4">
-
-            @foreach(var product in Model) {
-              <div class="col-3">
-              @await Html.PartialAsync("Partials/Site/_UrunCard" , product)
-              </div>
+                <section class="mt-3">
+                     <div class="container">
+                        <h3 class="h4 mb-1 mb-lg-3">Son Eklenenler</h3>
+                        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4">
+                            @foreach (var product in Model)
+                            {
+                                <div class="col">
+                                    @await Html.PartialAsync(
+                                        "Partials/Site/_UrunCard",
+                                        product
+                                    )
+                                </div>
+                            }
+                         </div>
+                    </div>
+                </section>
             }
-          </div>
-      </div>
-    </section>
+            else
+            {
+                if (TempData["RegisterInfo"] is not null)
+                {
+                    <div class="alert alert-info">
+                        @TempData["RegisterInfo"]
+                    </div>
+                }
+
+                if (TempData["ConfirmSuccess"] is not null)
+                {
+                    <div class="alert alert-success">
+                        @TempData["ConfirmSuccess"]
+                    </div>
+                }
+
+                if (TempData["ConfirmError"] is not null)
+                {
+                    <div class="alert alert-danger">
+                        @TempData["ConfirmError"]
+                    </div>
+                }
+
+
+                <div class="card p-auto">
+                    <div class="row p-1 p-lg-2 gx-2">
+
+                        <div class="col-lg-3 d-none d-lg-block">
+                            @await Html.PartialAsync(
+                                "Partials/Site/_Menu",
+                                ViewData["Kategoriler"]
+                            )
+                        </div>
+
+                        <div class="col-lg-9">
+                            @await Component.InvokeAsync("Slider")
+                        </div>
+
+                    </div>
+                </div>
+
+                <section class="mt-3">
+                     <div class="container">
+                        <h3 class="h4 mb-1 mb-lg-3">Son Eklenenler</h3>
+                        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4">
+                            @foreach (var product in Model)
+                            {
+                                <div class="col">
+                                    @await Html.PartialAsync(
+                                        "Partials/Site/_UrunCard",
+                                        product
+                                    )
+                                </div>
+                            }
+                         </div>
+                    </div>
+                </section>
+
+                
+            }
+
+                
+
+        </div>
+    </div>
+</section>
+
+<script>
+    setTimeout(() => {
+        const alert = document.getElementById("loginAlert");
+        if (alert) {
+            alert.classList.remove("show");
+        }
+    }, 4000);
+</script>

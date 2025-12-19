@@ -1,27 +1,31 @@
 @model Product
 
+@section Bar {
+  @await Component.InvokeAsync("Navbar")
+}
+
 <section class="mt-3">
   <div class="container">
     <div class="row">
       <div class="col-lg-5">
-        <div class="gallery-wrap">
+        <div class="gallery-wrap" style="margin-bottom: 120px;">
           <div class="img-big-wrap img-thumbnail">
-            <a href="~/img/@Model.ImageUrl" data-type="image" data-fslightbox>
-              <img src="img/@Model.ImageUrl" alt="">
+            <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
+              <img src="@Model.ImageUrl" alt="">
             </a>
           </div>
-          <div class="thumbs-wrap">
-            <a href="img/1-big.jpeg" data-type="image" data-fslightbox>
-              <img src="img/1.jpeg" height="60px" alt="">
+          <div class="thumbs-wrap" style = "margin-top:320px">
+            <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
+              <img src="@Model.ImageUrl" height="60px" alt="">
             </a>
-            <a href="img/2-big.jpeg" data-type="image" data-fslightbox>
-              <img src="img/2.jpeg" height="60px" alt="">
+            <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
+              <img src="@Model.ImageUrl" height="60px" alt="">
             </a>
-            <a href="img/3-big.jpeg" data-type="image" data-fslightbox>
-              <img src="img/3.jpeg" height="60px" alt="">
+            <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
+              <img src="@Model.ImageUrl" height="60px" alt="">
             </a>
-            <a href="img/4-big.jpeg" data-type="image" data-fslightbox>
-              <img src="img/4.jpeg" height="60px" alt="">
+            <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
+              <img src="@Model.ImageUrl" height="60px" alt="">
             </a>
           </div>
         </div>
@@ -79,7 +83,7 @@
   
 
     <section class="mt-3">
-      <div class="container">
+      <div class="container" style="margin-top: -60px;">
         <h4 class="mb-3">Benzer Ürünler</h4>
         <div class="row gy-3">
           @foreach (var item in urunler)
@@ -88,17 +92,26 @@
               <div class="card shadow">
                 <div class="img-wrap">
                   <span class="fa fa-regular fa-heart"></span>
-                  <img src="~/img/@item.ImageUrl" alt="ürün-1" class="card-img-top">
+                  <img src="@item.ImageUrl" alt="ürün-1" class="card-img-top">
                 </div>
                 <div class="border-top info-wrap">
                   <a asp-controller="Urun" asp-action="Details" asp-route-id="@item.ProductId"" class="title text-truncate">@item.ProductName</a>
                   <div class="price-wrap mb-3">
                     <span class="price-discount">@item.Price</span>
-                    @* <del class="price">49.999 ₺</del> *@
                   </div>
-                  <a href="#" class="btn btn-light w-100">  
-                    <i class="fa fa-shopping-basket me"></i> Sepete Ekle
-                  </a>
+                  <div class="product-description mb-3">@Model.ProductDescription</div>
+                  <div class="buttons">
+                    <form asp-controller="Cart" asp-action="AddToCart" method="post" class="me-1">
+                      <input type="hidden" name="urunId" value="@Model.ProductId">
+                      <button type="submit"  class="btn btn-warning w-100">  
+                       <i class="fa fa-shopping-basket"></i> Sepete Ekle
+                      </button>
+                    </form>
+                    <a href="#" class="btn btn-light">
+                      <i class="fa-regular fa-heart basket me-1"></i>
+                    </a>
+                    
+                  </div>
                 </div>
               </div>
             </div>

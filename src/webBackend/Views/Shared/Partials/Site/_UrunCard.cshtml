@@ -1,14 +1,22 @@
 @model Product
 
+
+
+
+
 <div class="card shadow">
+
+    
+
     <div class="img-wrap">
         <span class="badge bg-success">İndirim</span>
-        <img src="~/img/@Model.ImageUrl" alt="@Model.ProductName" class="card-img-top">
+        <img src="@($"{Context.Request.PathBase}{Model.ImageUrl}")" alt="@Model.ProductName" class="card-img-top">
     </div>
 
     <div class="border-top info-wrap">
         <a href="#" class="float-end btn btn-light">
             <i class="fa-regular fa-heart"></i>
+            
         </a>
         <a asp-controller="Urun" asp-action="Details" asp-route-id="@Model.ProductId"
             class="title text-truncate">@Model.ProductName

@@ -15,7 +15,7 @@ public partial class User
 
     public string Email { get; set; } = null!;
 
-    public byte[] HashedPassword { get; set; } = null!;
+    public string HashedPassword { get; set; } = null!;
 
     public short RoleId { get; set; }
 
@@ -26,4 +26,6 @@ public partial class User
     public DateTime? CreatedAt { get; set; }
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 }

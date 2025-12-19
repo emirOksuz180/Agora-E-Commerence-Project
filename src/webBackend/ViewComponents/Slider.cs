@@ -17,7 +17,7 @@ public class Slider : ViewComponent
 
   public IViewComponentResult Invoke()
   {
-    return View(_context.Sliders.ToList());
+    return View(_context.Sliders.Where(i => i.IsActive).OrderBy(i => i.DisplayOrder).ToList());
   }
 
 }
