@@ -4,15 +4,14 @@ using webBackend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using webBackend.Models;
-using webBackend.Services;
 using Iyzipay.Model;
 using Iyzipay;
 using Iyzipay.Request;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 
-namespace dotnet_store.Controllers;
+
+namespace webBackend.Controllers;   
 
 [Authorize]
 public class OrderController : Controller
@@ -22,12 +21,12 @@ public class OrderController : Controller
     private readonly AgoraDbContext _context;
 
     private readonly Category _category;
-    public OrderController(ICartService cartService, AgoraDbContext context , IConfiguration configuration , Category category)
+    public OrderController(ICartService cartService, AgoraDbContext context , IConfiguration configuration)
     {
         _cartService = cartService;
         _context = context;
         _configuration = configuration;
-        _category = category;
+        var categories = _context.Categories.ToList();
     }
 
     [Authorize(Roles = "Admin")]
