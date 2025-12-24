@@ -1,65 +1,56 @@
-// using Microsoft.AspNetCore.Authorization;
-// using Microsoft.AspNetCore.Mvc;
-// using Microsoft.EntityFrameworkCore.Metadata.Internal;
-
-namespace webBackend.Controllers;
-
 using System.Threading.Tasks;
+using dotnet_store.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using webBackend.Models;
+using webBackend.Services;
 
-[Authorize]
+
+namespace dotnet_store.Controllers;
 
 
-public class CartController: Controller
+public class CartController : Controller
 {
-
-  private readonly AgoraDbContext _context;
-
-  public CartController(AgoraDbContext context)
-  {
     
-    _context = context;
-
-  }
-
-  [HttpPost]
-  public async Task<ActionResult> AddToCart(int urunId , int miktar = 1)
-  {
-    var customerId = User.Identity?.Name;
-    var cart = await _context.Carts.Include(i => i.CartItems)
-      .Where(i => i.CustomerId == customerId)
-      .FirstOrDefaultAsync();
-
-
-    if(cart == null)
+    private readonly ICartService _cartService;
+    public CartController( ICartService cartService)
     {
-      cart = new Cart {CustomerId = customerId!};
-      _context.Carts.Add(cart);
+        
+        _cartService = cartService;
     }
+
+    public async Task<ActionResult> Index()
+    {   
+        var customerId = _cartService.GetCustomerId();
+        var cart = await _cartService.GetCart(customerId);
+        return View(cart);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult> AddToCart(int urunId, int miktar = 1)
+    {
+        await _cartService.AddToCart(urunId , miktar);
+
+        
+
+        return RedirectToAction("Index", "Cart");
+    }
+
+
+
+
+    [HttpPost]
+    public async Task<ActionResult> RemoveItem(int urunId , int miktar)
+    {
+
+        await _cartService.RemoveItem(urunId , miktar);
+
+        return RedirectToAction("Index" , "Cart");        
+    }
+
+
+
+   
     
-    var item = cart.CartItems.Where(i => i.UrunId == urunId).Any();
-
-    if(item != null)
-    {
-      // item += 1;
-    }
-    else
-    {
-      cart.CartItems.Add(new CartItem
-      {
-        UrunId = urunId,
-        Miktar = miktar  
-      });
-    }
-
-    await _context.SaveChangesAsync();
-
-    return RedirectToAction("Index" , "Home");
-
-    return View();
-  }
-  
 }

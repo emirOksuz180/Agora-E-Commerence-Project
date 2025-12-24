@@ -27,5 +27,5 @@ public partial class User
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
-    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+    
 }

@@ -10,6 +10,7 @@
     <PackageReference Include="Duende.IdentityServer" Version="7.4.3" />
     <PackageReference Include="Duende.IdentityServer.AspNetIdentity" Version="7.4.3" />
     <PackageReference Include="Duende.IdentityServer.EntityFramework" Version="7.4.3" />
+    <PackageReference Include="Iyzipay" Version="2.1.67" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">

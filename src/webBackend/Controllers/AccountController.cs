@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using webBackend.Services;
 
 namespace webBackend.Controllers;
 
@@ -13,11 +15,18 @@ public class AccountController : Controller
     private SignInManager<AppUser> _signInManager;
 
     private IEmailService _emailService;
-    public AccountController(UserManager<AppUser> userManager , SignInManager<AppUser> signInManager , IEmailService emailService)
+
+    private readonly AgoraDbContext _context;
+
+    private readonly ICartService _cartService;
+
+    public AccountController(UserManager<AppUser> userManager , SignInManager<AppUser> signInManager , IEmailService emailService , AgoraDbContext context , ICartService cartService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _emailService = emailService;
+        _context = context;
+        _cartService = cartService;
     }
     public ActionResult Create()
     {
@@ -120,6 +129,8 @@ public async Task<ActionResult> Create(RegisterViewModel model)
                                 return Redirect(returnUrl);
                             }
 
+                            await _cartService.TransferCartToUser(user.UserName!);      
+
                         return RedirectToAction("Index", "Home");
                       }
                 else if(result.IsLockedOut)
@@ -143,7 +154,9 @@ public async Task<ActionResult> Create(RegisterViewModel model)
         return View(model);
     }
 
-    [Authorize]
+
+
+  [Authorize]
     public async Task<ActionResult> LogOut()
     {
         await _signInManager.SignOutAsync();

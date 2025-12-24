@@ -17,6 +17,5 @@ public partial class UrunEditModel: UrunModel
     [InverseProperty("Product")]
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
-    [InverseProperty("Product")]
-    public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+    
 }

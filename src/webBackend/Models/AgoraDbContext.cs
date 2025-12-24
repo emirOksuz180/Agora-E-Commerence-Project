@@ -22,10 +22,6 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
 
     public virtual DbSet<Comment> Comments { get; set; }
 
-    public virtual DbSet<Order> Orders { get; set; }
-
-    public virtual DbSet<OrderDetail> OrderDetails { get; set; }
-
     public virtual DbSet<Product> Products { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
@@ -41,6 +37,8 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
     public virtual DbSet<UserMessage> UserMessages { get; set; }
 
     public DbSet<Cart> Carts { get; set; }
+
+    public DbSet<Order> Orders {get; set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -84,31 +82,6 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
                 .HasConstraintName("FK__Comments__UserID__59063A47");
         });
 
-        modelBuilder.Entity<Order>(entity =>
-        {
-            entity.HasKey(e => e.OrderId).HasName("PK__Orders__C3905BCF18D13ABA");
-
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.Status).HasMaxLength(50);
-            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18, 2)");
-
-            entity.HasOne(d => d.User).WithMany(p => p.Orders)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK__Orders__UserId__4D94879B");
-        });
-
-        modelBuilder.Entity<OrderDetail>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__OrderDet__3214EC075EA405D1");
-
-            entity.Property(e => e.UnitPrice).HasColumnType("decimal(18, 2)");
-
-            entity.HasOne(d => d.Product).WithMany(p => p.OrderDetails)
-                .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK__OrderDeta__Products__5165187F");
-        });
 
         modelBuilder.Entity<Product>(entity =>
         {
