@@ -364,7 +364,7 @@ public async Task<ActionResult> Create(RegisterViewModel model)
 
 
 [HttpGet]
-public async Task<ActionResult> ConfirmEmail(string userId, string token)
+public async Task<IActionResult> ConfirmEmail(string userId, string token)
 {
     if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
     {
@@ -380,15 +380,25 @@ public async Task<ActionResult> ConfirmEmail(string userId, string token)
         return RedirectToAction("Login");
     }
 
+    //  replay engeli
+    if (user.EmailConfirmed)
+    {
+        TempData["Mesaj"] = "Bu email adresi zaten doğrulanmış.";
+        return RedirectToAction("Index", "Home");
+    }
+
     var result = await _userManager.ConfirmEmailAsync(user, token);
 
-    if (result.Succeeded)
+    if (!result.Succeeded)
     {
-        TempData["Mesaj"] = "Email adresiniz başarıyla doğrulandı. Giriş yapabilirsiniz.";
+        TempData["Mesaj"] = "Email doğrulama başarısız veya link süresi dolmuş.";
         return RedirectToAction("Login");
     }
 
-    TempData["Mesaj"] = "Email doğrulama başarısız.";
+    // güvenlik önlemi
+    await _userManager.UpdateSecurityStampAsync(user);
+
+    TempData["Mesaj"] = "Email adresiniz başarıyla doğrulandı. Giriş yapabilirsiniz.";
     return RedirectToAction("Login");
 }
 

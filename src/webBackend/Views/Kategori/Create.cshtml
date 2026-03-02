@@ -19,17 +19,17 @@
               <div asp-validation-summary="All" class="text-danger"></div>
               <form method="post" asp-controller="Kategori" asp-action="Create">
                 <div class="row mb-3 mt-2">
-                  <label asp-for="Name" class="col-sm-2 col-form-label"></label>
+                  <label asp-for="Name" class="col-sm-2 col-form-label">Kategori Adı (Maks. 50)</label>
                   <div class="col-sm-10">
-                    <input asp-for="Name" class="form-control">
+                    <input asp-for="Name" id= "kategoriAdi" class="form-control" maxlength="50" placeholder="Örn: Erkek Ayakkabı">
                     <span asp-validation-for="Name" class="text-danger"></span>
                   </div>
                 </div>
 
                 <div class="row mb-3">
-                  <label asp-for="Url" class="col-sm-2 col-form-label"></label>
+                  <label asp-for="Url" class="col-sm-2 col-form-label">Kategori URL (Maks. 100)</label>
                   <div class="col-sm-10">
-                    <input type="text" id="Url" name = "Url" class="form-control">
+                    <input asp-for="Url" type="text" id="Url" name = "Url" class="form-control" maxlength="100" placeholder="erkek-ayakkabi">
                     <span asp-validation-for="Url" class="text-danger"></span>
                   </div>
                 </div>
@@ -46,8 +46,74 @@
       </div>
     </div>
 
-    @section Scripts {
+@section Scripts
+{
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+
     <script>
-        @await Html.PartialAsync("_ValidationScriptsPartial")
+        // double submit'i engellemek için
+        let submitLocked = false;
+
+        document.querySelector("form[action*='Create']")
+            .addEventListener("submit", function (e) {
+
+                if (submitLocked) {
+                    e.preventDefault();
+                    return;
+                }
+
+                submitLocked = true;
+
+                setTimeout(() => {
+                    submitLocked = false;
+                }, 2000);
+
+            });
+
+              document.addEventListener("DOMContentLoaded", function () {
+      const adInput = document.getElementById("kategoriAdi");
+      const urlInput = document.getElementById("Url");
+
+      if (adInput && urlInput) {
+          
+          // 1. BARİYER: Klavyeden yanlış karakter girişini anında engelle
+          urlInput.addEventListener("keypress", function (e) {
+              
+              const allowedUrlRegex = /^[a-z0-9-]+$/;
+              if (!allowedUrlRegex.test(e.key)) {
+                  e.preventDefault();
+              }
+          });
+
+          // otomatik slug mekanizmasi
+          adInput.addEventListener("input", function () {
+              let slug = generateSlug(this.value);
+              urlInput.value = slug.substring(0, 100);
+          });
+
+          // (CTRL + C) + (CTRL + V) bloklanmak
+          urlInput.addEventListener("blur", function () {
+              this.value = generateSlug(this.value).substring(0, 100);
+          });
+      }
+
+    
+      function generateSlug(text) {
+          const trMap = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u', 'İ': 'i' };
+          let result = text.toLowerCase();
+
+          Object.keys(trMap).forEach(key => {
+              result = result.replaceAll(key, trMap[key]);
+          });
+
+          return result
+              .replace(/[^a-z0-9 -]/g, '') // Özel karakterleri temizle
+              .replace(/\s+/g, '-')       // Boşlukları tire yap
+              .replace(/-+/g, '-')        // Ardışık tireleri tekle
+              .trim();
+      }
+      });
+
+            
     </script>
 }
