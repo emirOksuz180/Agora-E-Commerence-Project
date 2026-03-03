@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using webBackend.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace webBackend.Models;
 
-public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
+public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
 {
     public AgoraDbContext()
     {
@@ -17,10 +18,21 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
     {
     }
 
+    public virtual DbSet<AppPermission> AppPermissions { get; set; }
+
+    
+
+    public virtual DbSet<Cart> Carts { get; set; }
+
+    public virtual DbSet<CartItem> CartItems { get; set; }
 
     public virtual DbSet<Category> Categories { get; set; }
 
     public virtual DbSet<Comment> Comments { get; set; }
+
+    public virtual DbSet<Order> Orders { get; set; }
+
+    public virtual DbSet<OrderItem> OrderItems { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
 
@@ -36,25 +48,43 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
 
     public virtual DbSet<UserMessage> UserMessages { get; set; }
 
-    public DbSet<Cart> Carts { get; set; }
-
-    public DbSet<Order> Orders {get; set;}
-
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=EMIR-HP\\MSSQLSERVER01;Database=AgoraDb;Trusted_Connection=True;TrustServerCertificate=True;");
+        => optionsBuilder.UseSqlServer("Server=emir-HP\\MSSQLSERVER01;Database=AgoraDb;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
 
-        base.OnModelCreating(modelBuilder); 
+        modelBuilder.Entity<AppPermission>(entity =>
+        {
+            entity.HasIndex(e => e.PermissionKey, "UQ_AppPermissions_PermissionKey").IsUnique();
 
+            entity.Property(e => e.Description).HasMaxLength(250);
+            entity.Property(e => e.GroupName).HasMaxLength(50);
+            entity.Property(e => e.PermissionKey).HasMaxLength(100);
+        });
 
-    
+       
+
+        modelBuilder.Entity<CartItem>(entity =>
+        {
+            entity.ToTable("CartItem");
+
+            entity.HasIndex(e => e.CartId, "IX_CartItem_CartId");
+
+            entity.HasIndex(e => e.UrunId, "IX_CartItem_UrunId");
+
+            entity.HasOne(d => d.Cart).WithMany(p => p.CartItems).HasForeignKey(d => d.CartId);
+
+            entity.HasOne(d => d.Urun).WithMany(p => p.CartItems).HasForeignKey(d => d.UrunId);
+        });
 
         modelBuilder.Entity<Category>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Categori__3214EC07CB4A737B");
+
+            entity.HasIndex(e => e.Url, "CategoryIndex").IsUnique();
 
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Name).HasMaxLength(100);
@@ -66,6 +96,10 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
         modelBuilder.Entity<Comment>(entity =>
         {
             entity.HasKey(e => e.CommentId).HasName("PK__Comments__C3B4DFCABDFC24AD");
+
+            entity.HasIndex(e => e.ProductId, "IX_Comments_ProductId");
+
+            entity.HasIndex(e => e.UserId, "IX_Comments_UserID");
 
             entity.Property(e => e.CommentText).HasMaxLength(500);
             entity.Property(e => e.CreatedAt)
@@ -82,10 +116,30 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
                 .HasConstraintName("FK__Comments__UserID__59063A47");
         });
 
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.Property(e => e.AdSoyad).HasDefaultValue("");
+            entity.Property(e => e.Email).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<OrderItem>(entity =>
+        {
+            entity.ToTable("OrderItem");
+
+            entity.HasIndex(e => e.OrderId, "IX_OrderItem_OrderId");
+
+            entity.HasIndex(e => e.UrunId, "IX_OrderItem_UrunId");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderItems).HasForeignKey(d => d.OrderId);
+
+            entity.HasOne(d => d.Urun).WithMany(p => p.OrderItems).HasForeignKey(d => d.UrunId);
+        });
 
         modelBuilder.Entity<Product>(entity =>
         {
             entity.HasKey(e => e.ProductId).HasName("PK__Products__B40CC6CD0F77D7F2");
+
+            entity.HasIndex(e => e.CategoryId, "IX_Products_CategoryId");
 
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("((1))")
@@ -141,6 +195,8 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
 
             entity.ToTable("tbl_ilce");
 
+            entity.HasIndex(e => e.IlId, "IX_tbl_ilce_ilId");
+
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
                 .HasColumnName("id");
@@ -157,8 +213,6 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C1B28AE64");
-
-            entity.ToTable(tb => tb.HasTrigger("trg_HashPassword"));
 
             entity.HasIndex(e => e.RoleName, "UQ__Users__8A2B616056E220D8").IsUnique();
 
@@ -189,6 +243,8 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser , AppRole , int>
             entity.Property(e => e.FullName).HasMaxLength(100);
             entity.Property(e => e.MessageSubject).HasMaxLength(200);
         });
+
+        
 
         OnModelCreatingPartial(modelBuilder);
     }

@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace dotnet_store.Models;
+namespace webBackend.Models.Permissons;
+
+
 
 public class UserEditModel
 {
@@ -24,4 +26,6 @@ public class UserEditModel
 
 
     public IList<string>?  SelectedRoles { get; set; }
+
+    public List<PermissionItemViewModel> Permissions { get; set; } = new();
 }

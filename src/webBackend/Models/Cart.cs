@@ -1,11 +1,16 @@
-using webBackend.Models;
+﻿using System;
+using System.Collections.Generic;
 
-public class Cart
+namespace webBackend.Models;
+
+public partial class Cart
 {
     public int CartId { get; set; }
+
     public string CustomerId { get; set; } = null!;
 
-    public List<CartItem> CartItems { get; set; } = new();
+    public virtual ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
+
 
     public void AddItem(Product product , int miktar)
     {
@@ -20,6 +25,7 @@ public class Cart
             item.Miktar += miktar;
         }
     }
+
 
     public void DeleteItem(int urunId , int miktar)
     {
@@ -36,6 +42,7 @@ public class Cart
         }
     }
 
+
     public double araToplam()
     {
        return (double)CartItems.Sum( i => i.Urun.Price * i.Miktar);
@@ -48,14 +55,4 @@ public class Cart
     }
 }
 
-public class CartItem
-{
-    public int CartItemId { get; set; }
-    public int UrunId { get; set; }
-    public Product Urun { get; set; } = null!;
 
-    public int CartId { get; set; }
-    public Cart Cart { get; set; } = null!;
-
-    public int Miktar { get; set; }
-}

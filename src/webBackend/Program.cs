@@ -32,7 +32,8 @@ builder.Services.AddDbContext<AgoraDbContext>(options =>
 builder.Services
     .AddIdentity<AppUser, AppRole>()
     .AddEntityFrameworkStores<AgoraDbContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddRoles<AppRole>();
 
 
 builder.Services.ConfigureApplicationCookie(options =>

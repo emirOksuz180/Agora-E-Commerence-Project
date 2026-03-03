@@ -1,9 +1,8 @@
 using System.Threading.Tasks;
-using dotnet_store.Models;
+using webBackend.Models.Permissons;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using webBackend.Models;
 using webBackend.Services;
 
 

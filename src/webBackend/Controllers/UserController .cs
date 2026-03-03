@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using dotnet_store.Models;
+using webBackend.Models.Permissons;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +14,12 @@ public class UserController : Controller
 {
     private UserManager<AppUser> _userManager;
     private RoleManager<AppRole> _roleManager;
-    public UserController(UserManager<AppUser> userManager, RoleManager<AppRole> roleManager)
+    private readonly AgoraDbContext _context;
+    public UserController(UserManager<AppUser> userManager, RoleManager<AppRole> roleManager , AgoraDbContext context)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _context = context;
     }
 
     public async Task<ActionResult> Index(string role)
@@ -68,63 +70,97 @@ public class UserController : Controller
             return RedirectToAction("Index");
         }
 
+        var allPermissions = await _context.AppPermissions.ToListAsync();
+
+        var userClaims = await _userManager.GetClaimsAsync(user);
+
         ViewBag.Roles = await _roleManager.Roles.Select(i => i.Name).ToListAsync();
 
         return View(
             new UserEditModel
-            {
+            {   
+                
                 AdSoyad = user.AdSoyad,
                 Email = user.Email!,
-                SelectedRoles = await _userManager.GetRolesAsync(user)
+                SelectedRoles = await _userManager.GetRolesAsync(user),
+
+
+                Permissions = allPermissions.Select(p => new PermissionItemViewModel
+                {
+                    Id = p.Id,
+                    PermissionKey = p.PermissionKey,
+                    Description = p.Description,
+                    GroupName = p.GroupName,
+                    IsSelected = userClaims.Any(c => c.Type == "Permission" && c.Value == p.PermissionKey)
+                }).ToList()
             }
         );
     }
 
     [HttpPost]
-    public async Task<ActionResult> Edit(string id , UserEditModel model)
+    public async Task<ActionResult> Edit(string id, UserEditModel model)
     {
-        if(ModelState.IsValid)
+        if (ModelState.IsValid)
         {
             var user = await _userManager.FindByIdAsync(id);
 
-            if(user != null)
+            if (user != null)
             {
                 user.Email = model.Email;
                 user.AdSoyad = model.AdSoyad;
 
                 var result = await _userManager.UpdateAsync(user);
 
-                if(result.Succeeded && !string.IsNullOrEmpty(model.Password))
+                
+                if (result.Succeeded && !string.IsNullOrEmpty(model.Password))
                 {
                     await _userManager.RemovePasswordAsync(user);
-                    await _userManager.AddPasswordAsync(user , model.Password);
+                    await _userManager.AddPasswordAsync(user, model.Password);
                 }
 
-                if(result.Succeeded)
-                {   
-                    await _userManager.RemoveFromRolesAsync(user , await _userManager.GetRolesAsync(user));
+                if (result.Succeeded)
+                {
+                    
+                    await _userManager.RemoveFromRolesAsync(user, await _userManager.GetRolesAsync(user));
 
-                    if(model.SelectedRoles != null)
+                    if (model.SelectedRoles != null)
                     {
-                        await _userManager.AddToRolesAsync(user , model.SelectedRoles);
+                        await _userManager.AddToRolesAsync(user, model.SelectedRoles);
+                    }
+
+                    
+                    // Kullanıcının mevcut "Permission" tipindeki tüm claimlerini temizliyoruz
+                    var currentClaims = await _userManager.GetClaimsAsync(user);
+                    var permissionClaims = currentClaims.Where(c => c.Type == "Permission").ToList();
+                    await _userManager.RemoveClaimsAsync(user, permissionClaims);
+
+                    // View'dan (formdan) gelen seçili yetkileri ekliyoruz
+                    if (model.Permissions != null)
+                    {
+                        var selectedClaims = model.Permissions
+                            .Where(p => p.IsSelected)
+                            .Select(p => new System.Security.Claims.Claim("Permission", p.PermissionKey))
+                            .ToList();
+
+                        if (selectedClaims.Any())
+                        {
+                            await _userManager.AddClaimsAsync(user, selectedClaims);
+                        }
                     }
 
                     return RedirectToAction("Index");
                 }
 
+                // Identity hatalarını modele ekleme
                 foreach (var error in result.Errors)
                 {
                     ModelState.AddModelError("", error.Description);
                 }
-
-
             }
-
         }
 
         return View(model);
     }
-
 
 
     public async Task<ActionResult> Delete(string? Id)

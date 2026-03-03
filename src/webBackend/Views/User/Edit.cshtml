@@ -1,5 +1,11 @@
-@using dotnet_store.Models
+
+@using webBackend.Models
+@using webBackend.Models.Permissons
 @model UserEditModel
+
+
+
+
 @{
     Layout = "_AdminLayout";
 }
@@ -65,6 +71,45 @@
                                 </div>
                             }
 
+                        </div>
+                    </div>
+
+                    <div class="card mb-2">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Özel Yetkiler (Claims)</h6>
+                        </div>
+                        <div class="card-body">
+                            @* Yetkileri gruplayarak listeliyoruz ki karmaşa olmasın *@
+                            @foreach (var group in Model.Permissions.GroupBy(x => x.GroupName))
+                            {
+                                <div class="mb-3">
+                                    <small class="text-muted font-weight-bold d-block border-bottom mb-2">
+                                        @(group.Key ?? "Genel İşlemler")
+                                    </small>
+                                    
+                                    @for (int i = 0; i < Model.Permissions.Count; i++)
+                                    {
+                                        if (Model.Permissions[i].GroupName == group.Key)
+                                        {
+                                            <div class="form-check">
+                                                @* Hidden alanlar POST sırasında veriyi Controller'a taşımak için şart *@
+                                                <input type="hidden" asp-for="Permissions[i].Id" />
+                                                <input type="hidden" asp-for="Permissions[i].PermissionKey" />
+                                                
+                                                <input type="checkbox"
+                                                    asp-for="Permissions[i].IsSelected"
+                                                    class="form-check-input"
+                                                    id="perm_@Model.Permissions[i].Id" />
+
+                                                <label for="perm_@Model.Permissions[i].Id" class="form-check-label">
+                                                    @Model.Permissions[i].PermissionKey 
+                                                    <span class="text-muted small">(@Model.Permissions[i].Description)</span>
+                                                </label>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
                         </div>
                     </div>
 

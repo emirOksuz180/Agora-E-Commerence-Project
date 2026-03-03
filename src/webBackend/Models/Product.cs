@@ -25,9 +25,11 @@ public partial class Product
 
     public bool AnaSayfa { get; set; }
 
+    public virtual ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
+
     public virtual Category Category { get; set; } = null!;
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
-    
+    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }
