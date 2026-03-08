@@ -66,57 +66,6 @@ public ActionResult Create(KategoriCreateModel model)
 }
 
 
-public ActionResult Edit(int Id)
-{
-    var entity = _context.Categories
-        .Select(i => new KategoriEditModel
-        {
-            Id = i.Id,
-            Name = i.Name,
-            Url = i.Url
-        })
-        .FirstOrDefault(i => i.Id == Id);
-
-    if (entity == null)
-        return NotFound();
-
-    return View(entity);
-}
-
-[HttpPost]
-public ActionResult Edit(int Id, KategoriEditModel model)
-{
-    if (Id != model.Id)
-        return NotFound();
-
-    if (!ModelState.IsValid)
-        return View(model);
-
-    var entity = _context.Categories.FirstOrDefault(i => i.Id == model.Id);
-
-    if (entity == null)
-        return NotFound();
-
-    bool urlExists = _context.Categories
-        .Any(x => x.Url == model.Url && x.Id != model.Id);
-
-    if (urlExists)
-    {
-        ModelState.AddModelError("Url", "Bu URL zaten kullanımda.");
-        return View(model);
-    }
-
-    entity.Name = model.Name;
-    entity.Url = model.Url;
-
-    _context.SaveChanges();
-
-    TempData["Mesaj"] = $"{entity.Name} güncellendi";
-
-    return RedirectToAction("Index");
-}
-
-
   public ActionResult Delete(int? Id)
   {
     if(Id == null)

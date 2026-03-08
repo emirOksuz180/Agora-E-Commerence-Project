@@ -1,0 +1,50 @@
+@model PermissionCreateModel
+@{
+  Layout = "_AdminLayout";
+}
+
+    <div class="row">
+      <div class="col">
+        <div class="card shadow">
+          <div class="card-header py-1 d-flex justify-content-between align-items-center">
+            <h5 class="card-title">Yetki Ekle</h5>
+            <a asp-action="Index" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-list"></i>
+            </a>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <div asp-validation-summary="All" class="text-danger"></div>
+              <form method="post"  asp-action="Create">
+                <div class="row mb-3 mt-2">
+                  <label asp-for="PermissionKey" class="col-sm-2 col-form-label"></label>
+                  <div class="col-sm-10">
+                    <input asp-for="PermissionKey" class="form-control" placeholder="örn. Product.Create">
+                    <span asp-validation-for="PermissionKey" class="text-danger"></span>
+                  </div>
+                </div>
+                <div class="row mb-3 mt-2">
+                  <label asp-for="Description" class="col-sm-2 col-form-label"></label>
+                  <div class="col-sm-10">
+                    <input asp-for="Description" class="form-control"  placeholder="örn. Yeni ürün ekleme yetkisi">
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                  </div>
+                </div>
+                <div class="row mb-3 mt-2">
+                  <label asp-for="GroupName" class="col-sm-2 col-form-label"></label>
+                  <div class="col-sm-10">
+                    <input asp-for="GroupName" class="form-control" placeholder="örn. Ürün Yönetimi">
+                    <span asp-validation-for="GroupName" class="text-danger"></span>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-sm-10 offset-sm-2">
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

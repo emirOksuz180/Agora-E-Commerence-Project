@@ -1,0 +1,46 @@
+@model AppPermission
+
+@{
+  Layout = "_AdminLayout";
+  var roles = ViewBag.RoleNames as List<string>;
+}
+
+<div class="row mt-4">
+  <div class="col-md-8 offset-md-2">
+    <div class="card shadow border-0">
+       <div class="card-header bg-danger text-white text-center">
+           <h5 class="mb-0">Yetki Silme Onayı</h5>
+       </div>
+       <div class="card-body text-center p-5">
+          <p class="fs-5">
+            <strong>@Model.PermissionKey</strong> (@Model.Description) 
+            <br />isimli yetkiyi silmek istiyor musunuz?
+          </p>
+
+          <form asp-controller="Permission" asp-action="Delete" method="post">
+            <input type="hidden" name="id" value="@Model.Id">
+            
+            @if(roles != null && roles.Count > 0) {
+                <div class="alert alert-warning mt-4">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <p class="mb-2">Bu yetki aşağıdaki rollere tanımlanmış durumda. Silmek için önce bu rollerden kaldırmalısınız:</p>
+                    <hr>
+                    @foreach(var roleName in roles) {
+                        <span class="badge bg-dark m-1 p-2">@roleName</span>
+                    }
+                </div>
+                <div class="mt-4">
+                     <a class="btn btn-primary" style="width: 300px; border-radius: 40px;" asp-controller="Role" asp-action="Index">Geri Dön</a>
+                </div>
+            }
+            else {
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-danger me-2" style="width: 300px; border-radius: 40px;">Evet, Sil</button>
+                    <a class="btn btn-secondary" style="width: 300px; border-radius: 40px;" asp-controller="Role" asp-action="Index">İptal</a>
+                </div>
+            }
+          </form>
+       </div>
+    </div>
+  </div>
+</div>

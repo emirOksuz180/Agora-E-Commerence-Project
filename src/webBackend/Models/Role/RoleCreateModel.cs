@@ -8,10 +8,10 @@ public class RoleCreateModel
     [Key]
     public int Id { get; set; }
 
-    [Required]
-    [StringLength(30)]
+    [Required(ErrorMessage = "Role adı boş bırakılamaz.")]
+    [StringLength(30, ErrorMessage = "Role adı  en fazla 30 karakter olmalıdır.")]
     [Display(Name = "Role Adı")]
-    public string RoleAdi { get; set; } = null!;
+    public string RoleAdi { get; set; } = null!;    
 
     
 

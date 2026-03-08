@@ -2,7 +2,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using webBackend.Models;
+using webBackend.Models.Permissons;
 
 namespace webBackend.Controllers;
 
@@ -14,18 +16,38 @@ public class RoleController : Controller
   private RoleManager<AppRole> _rolemanager;
   private UserManager<AppUser> _usermanager;
 
-  public RoleController(RoleManager<AppRole> roleManager , UserManager<AppUser> usermanager)
+  private readonly AgoraDbContext _context;
+
+  public RoleController(RoleManager<AppRole> roleManager , UserManager<AppUser> usermanager , AgoraDbContext context)
   {
     
     _rolemanager = roleManager;
     _usermanager = usermanager;
+    _context = context;
 
   }
 
-  public ActionResult Index()
+  public async Task<IActionResult> Index()
   {
 
-    return View(_rolemanager.Roles);
+    var model = new RolePermissionViewModel
+    {
+      Roles = _rolemanager.Roles.ToList(),
+
+      Permissions = await _context.AppPermissions
+      .Select(p => new PermissionItemViewModel
+      {
+        
+        Id = p.Id,
+        PermissionKey = p.PermissionKey,
+        Description = p.Description,
+        GroupName = p.GroupName
+
+      }).ToListAsync() 
+
+    };
+    return View(model);
+    
   }
 
   public ActionResult Create()
