@@ -3,5 +3,37 @@
 
   Layout = "_AdminLayout";
 }
-@await Html.PartialAsync("Partials/Admin/_AdminCards")
-@await Html.PartialAsync("Partials/Admin/_NewOrders")
+
+
+<div class="container-fluid">
+    <h2>Yönetim Paneline Hoş Geldiniz</h2>
+    
+    @if (User.IsInRole("Admin"))
+    {
+        <div class="alert alert-dark">
+            <h5><i class="fas fa-info-circle"></i> Sistem Özeti (Sadece Admin)</h5>
+            <p>Şu an sistemde aktif 5 yönetici ve 120 kayıtlı kullanıcı bulunmaktadır. Sunucu durumu: Sağlıklı.</p>
+        </div>
+        
+        <div class="row">
+             <div class="col-md-6">
+                 <div class="card">
+                     <div class="card-body">Sistem Logları (Son 5 İşlem)</div>
+                 </div>
+             </div>
+        </div>
+    }
+    else
+    {
+        <div class="jumbotron">
+            <h4>Merhaba, @User.Identity?.Name!</h4>
+            <p>Sol taraftaki menüyü kullanarak yetkili olduğunuz modüllere erişebilirsiniz.</p>
+        </div>
+    }
+</div>
+
+
+
+
+@* @await Html.PartialAsync("Partials/Admin/_AdminCards")
+@await Html.PartialAsync("Partials/Admin/_NewOrders") *@

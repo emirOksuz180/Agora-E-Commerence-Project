@@ -14,26 +14,29 @@
 
           
           
+          @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Role.Delete")) {
+            <form asp-controller="Role"  asp-action="DeleteConfirm" method="post">
+              <input type="hidden" name="Id" value="@Model.Id">
+              
+              @if(ViewBag.Users.Count > 0) {
+                @foreach( var item in ViewBag.Users) {
+              
+                  <p>
+                    @item
+                  </p>
 
-          <form asp-controller="Role"  asp-action="DeleteConfirm" method="post">
-            <input type="hidden" name="Id" value="@Model.Id">
-            
-            @if(ViewBag.Users.Count > 0) {
-              @foreach( var item in ViewBag.Users) {
-            
-                <p>
-                  @item
-                </p>
-
+                }
               }
-            }
-            else {
-              <button type="submit" class="btn btn-danger" style="width: 300px; border-radius: 40px;">Sil</button>
-            }
+              else {
+                <button type="submit" class="btn btn-danger" style="width: 300px; border-radius: 40px;">Sil</button>
+              }
 
-            
-            <a class="btn btn-primary" style="width: 300px; border-radius: 40px;"  asp-action="Index">İptal</a>
-          </form>
+              
+              <a class="btn btn-primary" style="width: 300px; border-radius: 40px;"  asp-action="Index">İptal</a>
+            </form>
+          }
+
+          
        </div>
     </div>
   </div>

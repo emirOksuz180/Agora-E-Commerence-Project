@@ -1,4 +1,4 @@
-@model List<UrunGetModel>
+@model List<UrunViewModel>
 
 @{
   Layout  = "_AdminLayout";
@@ -9,33 +9,42 @@
     <div class="card shadow">
       <div class="card-header py-1 d-flex justify-content-between align-items-center">
         <h5 class="card-title">Ürünler</h5>
-        <a asp-controller="Urun" asp-action="Create" class="btn btn-sm btn-primary">
+
+        @if(User.IsInRole("Admin") || User.HasClaim("Permission " , "Product.Create")) {
+          <a asp-controller="Urun" asp-action="Create" class="btn btn-sm btn-primary">
           <i class="fa-solid fa-plus"></i>
-        </a>
+          </a>
+        }
+        
       </div>
       <div class="card-body">
-        <form method="get">
-          <div class="input-group mb-2">
-            <select name="kategori" asp-items="ViewBag.Categories" class="form-select">
-              <option value="" selected>Hepsi</option>
-            </select>
-            <button class="btn btn-secondary" type="submit">
-              <i class="fa-solid fa-magnifying-glass"></i>
-            </button>
-          </div>
-        </form>
+        @if(User.IsInRole("Admin") || User.HasClaim("Permission " , "Product.View")) {
 
+          <form method="get">
+            <div class="input-group mb-2">
+              <select name="kategori" asp-items="ViewBag.Categories" class="form-select">
+                <option value="" selected>Hepsi</option>
+              </select>
+              <button class="btn btn-secondary" type="submit">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
+            </div>
+          </form>
+
+        }
+        
         @if(Model.Count == 0) {
           <p class="text-danger mb-3">Ürün Bulunamadı</p>
         }
         else {
           <div class="table-responsive">
-            <table class="table table-bordered cursor-pointer table-hover table spriped mb-0">
+            <table class="table table-bordered cursor-pointer table-hover table-striped mb-0">
               <thead class="table-secondary">
                 <tr>
                   <th style="width: 20px;">ID</th>
                   <th style="width: 80px;">Resim</th>
                   <th>Ürün Adı</th>
+                  <th>Açıklama</th>
                   <th>Fiyat</th>
                   <th>Aktif</th>
                   <th>Anasayfa</th>
@@ -48,14 +57,16 @@
                   <tr>                  
                     <td>@urun.ProductId</td>
                     <td>
-                      <img src="@urun.ImageUrl" class="img-fluid" alt="">
+                      <img src="@urun.ImageUrl" class="img-fluid" alt="@urun.ProductName">
                     </td>
                     <td>@urun.ProductName</td>
-                    <td>@urun.Price</td>
-
-
-                    
-
+                    <td title="@urun.Description">
+                        @if (!string.IsNullOrEmpty(urun.Description))
+                        {
+                            @(urun.Description.Length > 40 ? urun.Description.Substring(0, 40) + "..." : urun.Description)
+                        }
+                    </td>
+                    <td>@urun.Price.ToString("C2")</td>
                     <td>
                       @if(urun.IsActive) {
                         <i class="fa-solid fa-circle-check text-success"></i>
@@ -72,14 +83,26 @@
                         <i class="fa-solid fa-circle-xmark text-danger"></i>
                       }
                     </td>
-                    <td>@urun.Category?.Name</td>
+                    <td>@urun.CategoryName</td>
                     <td class="d-flex justify-content-center gap-2">
-                      <a asp-controller="Urun" asp-action="Edit" asp-route-id="@urun.ProductId" class="btn btn-primary btn-sm">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                      </a>
-                      <a asp-controller="Urun" asp-action="Delete" asp-route-id="@urun.ProductId" class="btn btn-danger btn-sm me-2">
-                        <i class="fa-solid fa-trash"></i>
-                      </a>
+
+                      @if(User.IsInRole("Admin") || User.HasClaim("Permission " , "Product.Edit")) {
+                        
+                          <a asp-controller="Urun" asp-action="Edit" asp-route-id="@urun.ProductId" class="btn btn-primary btn-sm">
+                          <i class="fa-solid fa-pen-to-square"></i>
+                          </a>
+                        }
+
+                      @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Product.Delete")) 
+                      {
+                          
+                          <a href="javascript:void(0)" 
+                            onclick="deleteProduct(@urun.ProductId, '@Html.Raw(urun.ProductName.Replace("'", "\\'"))')" 
+                            class="btn btn-danger btn-sm">
+                              <i class="fa-solid fa-trash"></i>
+                          </a>
+                      }
+                      
                     </td>
                   </tr>
                 }
@@ -91,3 +114,44 @@
     </div>
   </div>
 </div>
+
+
+
+@section Scripts {
+    @* SweetAlert2 kütüphanesi *@
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        function deleteProduct(id, name) {
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: name + " isimli ürün kalıcı olarak silinecek!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33', // Silme butonu kırmızı
+                cancelButtonColor: '#3085d6', // Vazgeç butonu mavi
+                confirmButtonText: 'Evet, Sil!',
+                cancelButtonText: 'Vazgeç',
+                reverseButtons: true // Butonların yerini daha doğal hale getirir
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Gizli bir form oluşturup POST yapıyoruz
+                    var form = document.createElement("form");
+                    form.setAttribute("method", "post");
+                    form.setAttribute("action", "/Urun/Delete/" + id);
+
+                    // CSRF güvenliği için token'ı ekliyoruz
+                    var token = $('input[name="__RequestVerificationToken"]').val();
+                    var tokenInput = document.createElement("input");
+                    tokenInput.setAttribute("type", "hidden");
+                    tokenInput.setAttribute("name", "__RequestVerificationToken");
+                    tokenInput.setAttribute("value", token);
+
+                    form.appendChild(tokenInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+    </script>
+}

@@ -6,10 +6,10 @@
             <nav>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item">
-                        <a href="#">Anasayfa</a>
+                        <a asp-controller="Home" asp-action="Index">Anasayfa</a>
                     </li>
                     <li class="breadcrumb-item">
-                        ALışveriş Sepeti
+                        Alışveriş Sepeti
                     </li>
                 </ol>
             </nav>
@@ -21,8 +21,10 @@
     <div class="container">
         @if (Model.CartItems.Count == 0)
         {
-            <div class="alert alert-warning">
-                Sepette bir ürün yok.
+            <div class="alert alert-warning text-center p-5 shadow-sm">
+                <i class="fa-solid fa-cart-shopping fa-3x mb-3 text-muted"></i>
+                <h5>Sepetinizde ürün bulunmuyor.</h5>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-primary mt-3">Alışverişe Başla</a>
             </div>
         }
         else
@@ -32,78 +34,81 @@
                     <ul class="list-group">
                         @foreach (var item in Model.CartItems)
                         {
-                            <li class="py-3 mb-2 border-top list-group-item">
+                            <li class="py-3 mb-2 border-top list-group-item border-0 shadow-sm rounded mb-3">
                                 <div class="row align-items-center">
                                     <div class="col-7">
                                         <div class="d-flex align-items-center">
-                                            <img src="@item.Urun.ImageUrl" style="width: 100px;" alt="">
+                                            <img src="@item.Urun.ImageUrl" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" alt="">
                                             <div class="ms-3">
-                                                <a class="text-decoration-none" href="#">
-                                                    <h6 class="mb-0">@item.Urun.ProductName</h6>
-                                                </a>
+                                                <h6 class="mb-0 text-dark">@item.Urun.ProductName</h6>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-2">
-                                        <input type="number" value="@item.Miktar" class="form-control" min="1">
+                                        <input type="number" value="@item.Miktar" class="form-control" min="1" readonly>
                                     </div>
                                     <div class="col-2 text-center">
-                                        <span class="fw-bold">@item.Urun.Price ₺</span>
+                                        @* ÜRÜN BAZLI ÜCRETSİZ KONTROLÜ *@
+                                        @if (item.Urun.Price == 0)
+                                        {
+                                            <span class="badge bg-success">Ücretsiz</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="fw-bold text-primary">@item.Urun.Price.ToString("N2") ₺</span>
+                                        }
                                     </div>
-                                    <div class="col-1">
-                                      <form action="/Cart/RemoveItem" method="post">
-                                      <input type="hidden" name="urunId" value="@item.UrunId">
-                                      <input type="hidden" name="miktar" value="@item.Miktar">
-                                       <button type="submit" class="btn btn-sm btn-danger">
-                                          <i class="fa-solid fa-trash-can"></i> 
-                                       </button>
-                                      </form>
+                                    <div class="col-1 text-end">
+                                        <form asp-controller="Cart" asp-action="RemoveItem" method="post">
+                                            <input type="hidden" name="urunId" value="@item.UrunId">
+                                            <button type="submit" class="btn btn-sm text-danger">
+                                                <i class="fa-solid fa-trash-can"></i> 
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </li>
                         }
-
                     </ul>
                 </div>
                 <div class="col-lg-5">
-                    <div class="card">
-                        <div class="p-3 card-body">
-                            <h2 class="h5 mb-4">Sipariş Özeti</h2>
-                            <div class="card mb-2">
+                    <div class="card border-0 shadow-sm rounded">
+                        <div class="p-4 card-body">
+                            <h2 class="h5 mb-4 fw-bold">Sipariş Özeti</h2>
+                            <div class="mb-4">
                                 <div class="list-group list-group-flush">
-                                    <div class="d-flex justify-content-center align-items-center list-group-item">
-                                        <div class="me-auto">
-                                            <div>Sipariş Toplamı</div>
-                                        </div>
-                                        <span>@Model.araToplam() ₺</span>
-
+                                    <div class="d-flex justify-content-between py-2 border-bottom">
+                                        <span>Ara Toplam</span>
+                                        <span class="fw-bold">@(Model.araToplam() == 0 ? "0.00 ₺" : Model.araToplam().ToString("N2") + " ₺")</span>
                                     </div>
-                                    <div class="d-flex justify-content-center align-items-center list-group-item">
-                                        <div class="me-auto">
-                                            <div>Kargo Ücreti</div>
-                                        </div>
-                                        <span>Ücretsiz</span>
+                                    <div class="d-flex justify-content-between py-2 border-bottom">
+                                        <span>Kargo</span>
+                                        <span class="text-success">Ücretsiz</span>
                                     </div>
-                                    <div class="d-flex justify-content-center align-items-center list-group-item">
-                                        <div class="me-auto">
-                                            <div>Vergi (%20)</div>
-                                        </div>
-                                        <span>@(Model.araToplam() * 0.2) ₺</span>
+                                    <div class="d-flex justify-content-between py-2 border-bottom">
+                                        <span>Vergi (%20)</span>
+                                        <span>@((Model.araToplam() * 0.2).ToString("N2")) ₺</span>
                                     </div>
-                                    <div class="d-flex justify-content-center align-items-center list-group-item">
-                                        <div class="me-auto">
-                                            <div>Toplam</div>
-                                        </div>
-                                        <span>@Model.Toplam() ₺</span>
+                                    <div class="d-flex justify-content-between py-3">
+                                        <span class="h5 fw-bold">Toplam</span>
+                                        @* SEPET TOPLAMI ÜCRETSİZ KONTROLÜ *@
+                                        @if (Model.Toplam() == 0)
+                                        {
+                                            <span class="h5 fw-bold text-success">Ücretsiz</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="h5 fw-bold text-primary">@Model.Toplam().ToString("N2") ₺</span>
+                                        }
                                     </div>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-between">
-                                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-primary btn-lg rounded">
-                                    Alışverişe Devam 
+                            <div class="d-grid gap-2">
+                                <a asp-controller="Order" asp-action="Checkout" class="btn btn-primary btn-lg py-3">
+                                    <i class="fa-solid fa-credit-card me-2"></i>Siparişi Tamamla
                                 </a>
-                                <a asp-controller="Order" asp-action="Checkout" class="btn btn-success btn-lg rounded">
-                                    Siparişi Tamamla
+                                <a asp-controller="Home" asp-action="Index" class="btn btn-link text-decoration-none text-muted mt-2">
+                                    Alışverişe Devam Et
                                 </a>
                             </div>
                         </div>
@@ -111,6 +116,5 @@
                 </div>
             </div>
         }
-
     </div>
 </section>

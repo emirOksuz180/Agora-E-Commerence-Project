@@ -7,52 +7,72 @@ using Microsoft.EntityFrameworkCore;
 using Iyzipay.Model;
 using Iyzipay;
 using Iyzipay.Request;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
-
-
-namespace webBackend.Controllers;   
+namespace webBackend.Controllers;
 
 [Authorize]
 public class OrderController : Controller
 {
-    private ICartService _cartService;
+    private readonly ICartService _cartService;
     private readonly IConfiguration _configuration;
     private readonly AgoraDbContext _context;
 
-    private readonly Category _category;
-    public OrderController(ICartService cartService, AgoraDbContext context , IConfiguration configuration)
+    private readonly IEmailService _emailService;
+    private dynamic cart;
+
+  public OrderController(ICartService cartService, AgoraDbContext context, IConfiguration configuration , IEmailService emailService)
     {
         _cartService = cartService;
         _context = context;
         _configuration = configuration;
-        var categories = _context.Categories.ToList();
+        _emailService = emailService;
     }
 
-    [Authorize(Roles = "Admin")]
-    public ActionResult Index()
+    [Authorize(Policy = "Order.View")]
+    public async Task<ActionResult> IndexAsync()
     {
-        return View(_context.Orders.ToList());
+        var orders = await _context.Orders.ToListAsync();
+        var productCount = await _context.Products.CountAsync();
+
+        ViewBag.TotalSales = orders.Sum(x => x.ToplamFiyat);
+        ViewBag.OrderCount = orders.Count;
+        ViewBag.ProductCount = productCount;
+
+        return View(orders);
     }
 
-    [Authorize(Roles = "Admin")]
-    public ActionResult Details(int id)
+    [Authorize(Policy = "Order.View")]
+    public async Task<ActionResult> Details(int id)
     {
-        var order = _context.Orders
+        var order = await _context.Orders
                     .Include(i => i.OrderItems)
                     .ThenInclude(i => i.Urun)
-                    .FirstOrDefault(i => i.Id == id);
+                    .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (order == null) return NotFound();
 
         return View(order);
     }
 
     public async Task<ActionResult> Checkout()
     {
-        ViewBag.Cart = await _cartService.GetCart(User.Identity?.Name!);
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username)) return RedirectToAction("Login", "Account");
+
+        var cart = await _cartService.GetCart(username);
+        ViewBag.Cart = cart;
+        
+        var iller = _context.TblIls.OrderBy(x => x.IlAdi).ToList();
+        ViewBag.Iller = new SelectList(iller, "IlAdi", "IlAdi");
+
+        
+
         return View();
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<ActionResult> Checkout(OrderCreateModel model)
     {
         var username = User.Identity?.Name!;
@@ -63,50 +83,114 @@ public class OrderController : Controller
             ModelState.AddModelError("", "Sepetinizde ürün yok");
         }
 
+        ViewBag.Cart = cart;
+
+        var order = new Order
+        {
+            AdSoyad = model.AdSoyad,
+            Telefon = model.Telefon,
+            AdresSatiri = model.AdresSatiri,
+            PostaKodu = model.PostaKodu,
+            Sehir = model.Sehir,
+            SiparisNotu = model.SiparisNotu ?? "",
+            SiparisTarihi = DateTime.Now,
+            // Önemli: Önce cart üzerinden hesaplıyoruz
+            ToplamFiyat = cart.Toplam(), 
+            Username = username,
+            OrderItems = cart.CartItems.Select(ci => new webBackend.Models.OrderItem
+            {
+                UrunId = ci.UrunId,
+                Fiyat = (double)ci.Urun.Price,
+                Miktar = ci.Miktar
+            }).ToList()
+        };
+
+        // Validasyon temizliği (Ücretsiz ürünler için)
+        if (order.ToplamFiyat == 0)
+        {
+            ModelState.ClearValidationState("ToplamFiyat");
+            ModelState.MarkFieldValid("ToplamFiyat");
+
+            var itemFiyatKeys = ModelState.Keys.Where(k => k.Contains("Fiyat")).ToList();
+            foreach (var key in itemFiyatKeys)
+            {
+                ModelState.ClearValidationState(key);
+                ModelState.MarkFieldValid(key);
+            }
+        }
+
         if (ModelState.IsValid)
         {
-            var order = new Order
-            {
-                AdSoyad = model.AdSoyad,
-                Telefon = model.Telefon,
-                AdresSatiri = model.AdresSatiri,
-                PostaKodu = model.PostaKodu,
-                Sehir = model.Sehir,
-                SiparisNotu = model.SiparisNotu!,
-                SiparisTarihi = DateTime.Now,
-                ToplamFiyat = cart.Toplam(),
-                Username = username,
-                OrderItems = cart.CartItems.Select(ci => new webBackend.Models.OrderItem
-                {
-                    UrunId = ci.UrunId,
-                    Fiyat = (double)ci.Urun.Price,
-                    Miktar = ci.Miktar
-                }).ToList()
-            };
+            // SQL Hatasını Bitiren Dokunuş: Model içindeki hesaplamayı tetikle
+            // Bu metot ToplamFiyat property'sini içeriden doldurur.
+            order.Toplam(); 
 
-            var payment = await ProcessPayment(model , cart);
-            if(payment.Status == "success")
+            ProcessPaymentResult payment;
+            if (order.ToplamFiyat == 0)
             {
+                payment = new ProcessPaymentResult { Status = "success" };
+            }
+            else
+            {
+                payment = await ProcessPayment(model, cart);
+            }
+
+            if (payment.Status == "success")
+            {
+
+                order.ToplamFiyat = (double)cart.Toplam(); 
+
                 _context.Orders.Add(order);
-                _context.Carts.Remove(cart);
+                
+                
+                _context.Entry(order).Property(x => x.ToplamFiyat).IsModified = true;
 
                 await _context.SaveChangesAsync();
+                
+                
+
+              
+                try 
+                {
+                    var orderListUrl = Url.Action("OrderList", "Order", null, Request.Scheme);
+                    string mailSubject = $"Sipariş Onayı - #{order.Id}";
+                    string mailBody = $@"
+                        <div style='font-family: sans-serif; background-color: #f8f9fa; padding: 20px;'>
+                            <div style='max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; border: 1px solid #dee2e6;'>
+                                <div style='background: linear-gradient(135deg, #6610f2, #8b5cf6); padding: 25px; text-align: center; color: white;'>
+                                    <h1 style='margin: 0;'>Agora E-Commerce</h1>
+                                </div>
+                                <div style='padding: 25px;'>
+                                    <h2 style='color: #6610f2;'>Merhaba {model.AdSoyad},</h2>
+                                    <p>Siparişiniz (<strong>#{order.Id}</strong>) başarıyla alındı ve onaylandı.</p>
+                                    <p style='font-size: 18px;'>Toplam Tutar: <strong>{(order.ToplamFiyat == 0 ? "Ücretsiz" : order.ToplamFiyat.ToString("N2") + " ₺")}</strong></p>
+                                    <div style='text-align: center; margin-top: 25px;'>
+                                        <a href='{orderListUrl}' style='background: #6610f2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold;'>Siparişlerimi Görüntüle</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>";
+
+                    await _emailService.SendEmailAsync(username, mailSubject, mailBody);
+                }
+                catch { }
 
                 return RedirectToAction("Completed", new { orderId = order.Id });
             }
             else
             {
-                ModelState.AddModelError("" , payment.ErrorMessage);
+                ModelState.AddModelError("", payment.ErrorMessage ?? "Ödeme işlemi sırasında bir hata oluştu.");
             }
-
-            
         }
 
+        // Hata durumunda dropdown'ları tekrar doldur
+        var iller = _context.TblIls.OrderBy(x => x.IlAdi).ToList();
+        ViewBag.Iller = new SelectList(iller, "IlAdi", "IlAdi");
         ViewBag.Cart = cart;
+
         return View(model);
     }
-
-    public ActionResult Completed(string orderId)
+    public ActionResult Completed(int orderId)
     {
         return View("Completed", orderId);
     }
@@ -115,85 +199,99 @@ public class OrderController : Controller
     {
         var username = User.Identity?.Name;
         var orders = await _context.Orders
-        .Include(i => i.OrderItems)
-        .ThenInclude(i => i.Urun)
-        .Where(i => i.Username == username)
-        .ToListAsync();
+            .Include(i => i.OrderItems)
+            .ThenInclude(i => i.Urun)
+            .Where(i => i.Username == username)
+            .ToListAsync();
 
         return View(orders);
     }
 
     private async Task<Payment> ProcessPayment(OrderCreateModel model, Cart cart)
     {
-        Options options = new Options();
-        options.ApiKey = _configuration["PaymentAPI:APIKey"];
-        options.SecretKey = _configuration["PaymentAPI:SecretKey"];
-        options.BaseUrl = "https://sandbox-api.iyzipay.com";
-                
-        CreatePaymentRequest request = new CreatePaymentRequest();
-        request.Locale = Locale.TR.ToString();
-        request.ConversationId = Guid.NewGuid().ToString();
-        request.Price = cart.araToplam().ToString();
-        request.PaidPrice = cart.araToplam().ToString();
-        request.Currency = Currency.TRY.ToString();
-        request.Installment = 1;
-        request.BasketId = "B67832";
-        request.PaymentChannel = PaymentChannel.WEB.ToString();
-        request.PaymentGroup = PaymentGroup.PRODUCT.ToString();
+        Options options = new Options
+        {
+            ApiKey = _configuration["PaymentAPI:APIKey"],
+            SecretKey = _configuration["PaymentAPI:SecretKey"],
+            BaseUrl = "https://sandbox-api.iyzipay.com"
+        };
 
-        PaymentCard paymentCard = new PaymentCard();
-        paymentCard.CardHolderName = model.CartName;
-        paymentCard.CardNumber = model.CartNumber;
-        paymentCard.ExpireMonth = model.CartExpirationMonth;
-        paymentCard.ExpireYear = model.CartExpirationYear;
-        paymentCard.Cvc = model.CartCVV;
-        paymentCard.RegisterCard = 0;
+        CreatePaymentRequest request = new CreatePaymentRequest
+        {
+            Locale = Locale.TR.ToString(),
+            ConversationId = Guid.NewGuid().ToString(),
+            Price = cart.araToplam().ToString("F2").Replace(",", "."),
+            PaidPrice = cart.araToplam().ToString("F2").Replace(",", "."),
+            Currency = Currency.TRY.ToString(),
+            Installment = 1,
+            BasketId = "B" + Guid.NewGuid().ToString().Substring(0, 5),
+            PaymentChannel = PaymentChannel.WEB.ToString(),
+            PaymentGroup = PaymentGroup.PRODUCT.ToString()
+        };
+
+        PaymentCard paymentCard = new PaymentCard
+        {
+            CardHolderName = model.CartName,
+            CardNumber = model.CartNumber,
+            ExpireMonth = model.CartExpirationMonth,
+            ExpireYear = model.CartExpirationYear,
+            Cvc = model.CartCVV,
+            RegisterCard = 0
+        };
         request.PaymentCard = paymentCard;
 
-        Buyer buyer = new Buyer();
-        buyer.Id = "BY789";
-        buyer.Name = model.AdSoyad;
-        buyer.Surname = "Doe";
-        buyer.GsmNumber = model.Telefon;
-        buyer.Email = "email@email.com";
-        buyer.IdentityNumber = "74300864791";
-        buyer.LastLoginDate = "2015-10-05 12:43:35";
-        buyer.RegistrationDate = "2013-04-21 15:12:09";
-        buyer.RegistrationAddress = "Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1";
-        buyer.Ip = "85.34.78.112";
-        buyer.City = model.Sehir;
-        buyer.Country = "Turkey";
-        buyer.ZipCode = model.PostaKodu;
+        Buyer buyer = new Buyer
+        {
+            Id = "BY" + User.Identity?.Name,
+            Name = model.AdSoyad.Split(' ')[0],
+            Surname = model.AdSoyad.Contains(" ") ? model.AdSoyad.Split(' ')[1] : "Customer",
+            GsmNumber = model.Telefon,
+            Email = "customer@example.com",
+            IdentityNumber = "11111111111",
+            RegistrationAddress = model.AdresSatiri,
+            Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+            City = model.Sehir,
+            Country = "Turkey",
+            ZipCode = model.PostaKodu
+        };
         request.Buyer = buyer;
 
-        Address address = new Address();
-        address.ContactName = model.AdSoyad;
-        address.City = model.Sehir;
-        address.Country = "Turkey";
-        address.Description = model.AdresSatiri;
-        address.ZipCode = model.PostaKodu;
+        Address address = new Address
+        {
+            ContactName = model.AdSoyad,
+            City = model.Sehir,
+            Country = "Turkey",
+            Description = model.AdresSatiri,
+            ZipCode = model.PostaKodu
+        };
         request.ShippingAddress = address;
         request.BillingAddress = address;
 
         List<BasketItem> basketItems = new List<BasketItem>();
-
-        foreach(var item in cart.CartItems)
+        foreach (var item in cart.CartItems)
         {
-            BasketItem basketItem = new BasketItem();
-            basketItem.Id = item.CartItemId.ToString();
-            basketItem.Name = item.Urun.ProductName;
-            basketItem.Category1 = _category.Name ;
-            basketItem.ItemType = BasketItemType.PHYSICAL.ToString();
-            basketItem.Price = item.Urun.Price.ToString();
-
-            basketItems.Add(basketItem);
+            basketItems.Add(new BasketItem
+            {
+                Id = item.UrunId.ToString(),
+                Name = item.Urun.ProductName,
+                Category1 = "General",
+                ItemType = BasketItemType.PHYSICAL.ToString(),
+                Price = item.Urun.Price.ToString("F2").Replace(",", ".")
+            });
         }
-
-        
-
-
         request.BasketItems = basketItems;
 
         return await Payment.Create(request, options);
     }
+}
+
+internal class ProcessPaymentResult
+{
+  public string Status { get; internal set; }
+  public string? ErrorMessage { get; internal set; }
+
+  public static implicit operator ProcessPaymentResult(Payment v)
+  {
+    throw new NotImplementedException();
+  }
 }

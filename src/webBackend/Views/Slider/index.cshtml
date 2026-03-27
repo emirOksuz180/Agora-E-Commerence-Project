@@ -11,9 +11,13 @@
         <div class="card shadow">
           <div class="card-header py-1 d-flex justify-content-between align-items-center">
             <h5 class="card-title">Sliderlar</h5>
-            <a asp-action="Create" class="btn btn-sm btn-primary">
-              <i class="fa-solid fa-plus"></i>
-            </a>
+            @if(User.IsInRole("Admin") || User.HasClaim("Permission" , "Slider.Create")) {
+
+              <a asp-action="Create" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-plus"></i>
+              </a>
+            }
+            
           </div>
           <div class="card-body">
             <div class="table-responsive">
@@ -23,8 +27,8 @@
                   <th style="width: 20px;">ID</th>
                   <th style="width: 200px;">Resim</th>
                   <th>Başlık</th>
+                  <th>Açıklama</th>
                   <th>Aktif</th>
-                  
                   <th>Index</th>
                   <th style="width: 50px;"></th>
                 </tr>
@@ -37,6 +41,7 @@
                       <img src="img/@item.ImageUrl" class="img-fluid" alt="">
                     </td>
                     <td>@item.SliderTitle</td>
+                    <td>@item.SliderDescription</td>
                     <td>
                       @if(item.IsActive) {
                         <i class="fa-solid fa-circle-check text-success"></i>
@@ -47,12 +52,18 @@
                     </td>
                     <td>@item.DisplayOrder</td>
                     <td class="d-flex">
-                      <a asp-controller="Slider" asp-action="Edit" asp-route-id="@item.SliderId" class="btn btn-primary btn-sm">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                      </a>
-                      <a asp-controller="Slider" asp-action="Delete" asp-route-id= "@item.SliderId" class="btn btn-danger btn-sm">
-                        <i class="fa-solid fa-trash"></i>
-                      </a>
+                      @if(User.IsInRole("Admin") || User.HasClaim("Permission" , "Slider.Edit")) {
+                        <a asp-controller="Slider" asp-action="Edit" asp-route-id="@item.SliderId" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
+                      }
+                      
+                      @if(User.IsInRole("Admin") || User.HasClaim("Permission" , "Slider.Delete")) {
+                        <a asp-controller="Slider" asp-action="Delete" asp-route-id= "@item.SliderId" class="btn btn-danger btn-sm">
+                          <i class="fa-solid fa-trash"></i>
+                        </a>
+                      }
+                      
                     </td>
                   </tr>
                 }

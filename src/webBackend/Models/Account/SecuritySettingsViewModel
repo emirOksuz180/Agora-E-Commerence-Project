@@ -1,0 +1,4 @@
+public class SecuritySettingsViewModel
+{
+    public bool IsTwoFactorEnabled { get; set; }
+}

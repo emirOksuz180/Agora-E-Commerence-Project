@@ -1,29 +1,32 @@
 @model Product
 
-
-
-
-
-<div class="card shadow">
-
-    
-
+<div class="card shadow h-100">
     <div class="img-wrap">
-        <span class="badge bg-success">İndirim</span>
-        <img src="@($"{Context.Request.PathBase}{Model.ImageUrl}")" alt="@Model.ProductName" class="card-img-top">
+        @if (Model.Price > 0) 
+        {
+            <span class="badge bg-success">İndirim</span>
+        }
+        <img src="@($"{Context.Request.PathBase}{Model.ImageUrl}")" alt="@Model.ProductName" class="card-img-top" style="object-fit: cover; height: 200px;">
     </div>
 
-    <div class="border-top info-wrap">
-        <a href="#" class="float-end btn btn-light">
+    <div class="border-top info-wrap p-3">
+        <a href="#" class="float-end btn btn-light btn-sm">
             <i class="fa-regular fa-heart"></i>
-            
         </a>
         <a asp-controller="Urun" asp-action="Details" asp-route-id="@Model.ProductId"
-            class="title text-truncate">@Model.ProductName
-            </a>
+           class="title text-truncate d-block mb-2 fw-bold text-decoration-none text-dark">
+            @Model.ProductName
+        </a>
+        
         <div class="price-wrap">
-            <span class="price-discount">@Model.Price ₺</span>
-            @* <del class="price">49.999 ₺</del> *@
+            @if (Model.Price <= 0)
+            {
+                <span class="badge bg-success px-3 py-2" style="font-size: 0.9rem;">Ücretsiz</span>
+            }
+            else
+            {
+                <span class="price-discount fw-bold text-primary">@Model.Price.ToString("C2")</span>
+            }
         </div>
     </div>
 </div>

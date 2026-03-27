@@ -9,9 +9,9 @@
     <div class="card">
        <div class="card-body text-center">
           <p>
-            @Model.ProductName isimli kategoriyi silmek istiyor musunuz ?
+            @Model.ProductName isimli Ürünü silmek istiyor musunuz ?
           </p>
-          <form asp-action="DeleteConfirm" method="post">
+          <form asp-action="Delete" method="post">
             <input type="hidden" name="Id" value="@Model.ProductId">
             <button type="submit" class="btn btn-danger" style="width: 300px; border-radius: 40px;">Sil</button>
             <a class="btn btn-primary" style="width: 300px; border-radius: 40px;"  asp-action="Index">İptal</a>

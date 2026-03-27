@@ -5,7 +5,7 @@ using webBackend.Models;
 
 namespace webBackend.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = "Claim.View")]
 public class PermissionController : Controller
 {
     private readonly AgoraDbContext _context;
@@ -15,7 +15,8 @@ public class PermissionController : Controller
         _context = context;
     }
 
-    
+    [HttpGet]
+    [Authorize(Policy = "Claim.Create")]
     public IActionResult Create()
     {
         return View();
@@ -23,6 +24,7 @@ public class PermissionController : Controller
 
     
 [HttpPost]
+[Authorize(Policy = "Claim.Create")]
 [ValidateAntiForgeryToken]
 public async Task<IActionResult> Create(PermissionCreateModel model) // Parametreyi değiştirdik
 {
@@ -56,6 +58,8 @@ public async Task<IActionResult> Create(PermissionCreateModel model) // Parametr
 }
 
     // GET: Permission/Edit/5
+    [HttpGet]
+    [Authorize(Policy = "Claim.Edit")]
     public async Task<IActionResult> Edit(int id)
     {
         var permission = await _context.AppPermissions.FindAsync(id);
@@ -76,6 +80,7 @@ public async Task<IActionResult> Create(PermissionCreateModel model) // Parametr
     
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "Claim.Edit")]
     public async Task<IActionResult> Edit(PermissionCreateModel model)
     {
 
@@ -111,6 +116,8 @@ public async Task<IActionResult> Create(PermissionCreateModel model) // Parametr
     }
 
     // GET: Permission/Delete/5
+    [HttpGet]
+    [Authorize(Policy = "Claim.Delete")]
     public async Task<IActionResult> Delete(int id)
     {
         var permission = await _context.AppPermissions.FindAsync(id);
@@ -121,6 +128,7 @@ public async Task<IActionResult> Create(PermissionCreateModel model) // Parametr
     // POST: Permission/Delete
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = "Claim.Delete")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var permission = await _context.AppPermissions.FindAsync(id);

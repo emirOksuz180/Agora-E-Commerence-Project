@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
+
 
 namespace webBackend.Models;
 
@@ -49,12 +49,33 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
     public virtual DbSet<UserMessage> UserMessages { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=emir-HP\\MSSQLSERVER01;Database=AgoraDb;Trusted_Connection=True;TrustServerCertificate=True;");
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            
+        }
+    }
+
+        
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            
+            entity.ToTable("AspNetUsers");
+
+            
+            entity.Property(e => e.TwoFactorEnabled)
+                .HasDefaultValueSql("((1))") 
+                .ValueGeneratedOnAdd();      
+        });
+
+
+
 
         modelBuilder.Entity<AppPermission>(entity =>
         {
@@ -120,6 +141,11 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
         {
             entity.Property(e => e.AdSoyad).HasDefaultValue("");
             entity.Property(e => e.Email).HasMaxLength(256);
+            entity.Property(e => e.ToplamFiyat)
+          .HasColumnType("decimal(18, 2)") 
+          .HasColumnType("float") 
+          .IsRequired()
+          .ValueGeneratedNever();
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
@@ -129,6 +155,12 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.HasIndex(e => e.OrderId, "IX_OrderItem_OrderId");
 
             entity.HasIndex(e => e.UrunId, "IX_OrderItem_UrunId");
+
+                entity.Property(e => e.Fiyat)
+            .HasColumnType("decimal(18, 2)")
+            .HasColumnType("float") 
+          .IsRequired()
+          .HasDefaultValue(0);
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderItems).HasForeignKey(d => d.OrderId);
 
@@ -146,7 +178,8 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
                 .HasColumnType("datetime");
             entity.Property(e => e.ImageUrl).HasMaxLength(255);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Price).HasColumnType("decimal(18, 2)")
+            .HasDefaultValue(0.00m);
             entity.Property(e => e.ProductDescription).HasMaxLength(500);
             entity.Property(e => e.ProductName).HasMaxLength(100);
 

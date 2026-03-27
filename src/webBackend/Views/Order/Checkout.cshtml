@@ -5,12 +5,8 @@
         <div class="container">
             <nav>
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item">
-                        <a href="#">Anasayfa</a>
-                    </li>
-                    <li class="breadcrumb-item">
-                        Siparişi Tamamla
-                    </li>
+                    <li class="breadcrumb-item"><a href="/" class="text-white">Anasayfa</a></li>
+                    <li class="breadcrumb-item text-white-50">Siparişi Tamamla</li>
                 </ol>
             </nav>
         </div>
@@ -18,135 +14,158 @@
 }
 
 <section class="mt-3">
-  <div class="container">
+    <div class="container">
         <form method="post">
-            <div asp-validation-summary="All" class="text-danger"></div>
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
             <div class="row">
                 <div class="col-md-8">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h2 class="h5 mb-0">Teslimat Bilgileri</h2>
+                    <div class="card mb-3 shadow-sm border-0">
+                        <div class="card-header bg-white py-3">
+                            <h2 class="h5 mb-0 fw-bold">Teslimat Bilgileri</h2>
                         </div>
-
                         <div class="card-body">
                             <div class="row mb-3">
                                 <div class="col">
-                                    <label asp-for="AdSoyad" class="form-label"></label>
-                                    <input asp-for="AdSoyad" class="form-control">
+                                    <label asp-for="AdSoyad" class="form-label fw-bold"></label>
+                                    <input asp-for="AdSoyad" class="form-control" placeholder="Ad Soyad giriniz">
+                                    <span asp-validation-for="AdSoyad" class="text-danger small"></span>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col">
-                                    <label asp-for="Sehir" class="form-label"></label>
-                                    <input asp-for="Sehir" class="form-control">
+                                    <label asp-for="Sehir" class="form-label fw-bold"></label>
+                                    
+                                    <select asp-for="Sehir" 
+                                            asp-items="@(ViewBag.Iller as SelectList)" 
+                                            class="form-select">
+                                            <option value="">Şehir Seçiniz...</option>
+                                    </select>
+                                    <span asp-validation-for="Sehir" class="text-danger small"></span>
                                 </div>
                                 <div class="col">
-                                    <label asp-for="Telefon" class="form-label"></label>
-                                    <input asp-for="Telefon" class="form-control">
+                                    <label asp-for="Telefon" class="form-label fw-bold"></label>
+                                    <input asp-for="Telefon" class="form-control" placeholder="5xx xxx xxxx">
+                                    <span asp-validation-for="Telefon" class="text-danger small"></span>
                                 </div>
                                 <div class="col">
-                                    <label asp-for="PostaKodu" class="form-label"></label>
-                                    <input asp-for="PostaKodu" class="form-control">
+                                    <label asp-for="PostaKodu" class="form-label fw-bold"></label>
+                                    <input asp-for="PostaKodu" class="form-control" placeholder="34000">
+                                    <span asp-validation-for="PostaKodu" class="text-danger small"></span>
+                                    
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col">
-                                    <label asp-for="AdresSatiri" class="form-label"></label>
-                                    <textarea asp-for="AdresSatiri"
-                                            class="form-control"
-                                            rows="3"></textarea>
+                                    <label asp-for="AdresSatiri" class="form-label fw-bold"></label>
+                                    <textarea asp-for="AdresSatiri" class="form-control" rows="3" placeholder="Mahalle, Sokak, Kapı No..."></textarea>
+                                    <span asp-validation-for="AdresSatiri" class="text-danger small"></span>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col">
-                                    <label asp-for="SiparisNotu" class="form-label"></label>
-                                    <textarea asp-for="SiparisNotu"
-                                            class="form-control"
-                                            rows="3"></textarea>
+                                    <label asp-for="SiparisNotu" class="form-label fw-bold"></label>
+                                    <textarea asp-for="SiparisNotu" class="form-control" rows="2" placeholder="Varsa sipariş notunuz..."></textarea>
                                 </div>
                             </div>
                         </div>
-
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <h2 class="h5 mb-0">Ödeme Bilgileri</h2>
+                    
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white py-3">
+                            <h2 class="h5 mb-0 fw-bold">Ödeme Bilgileri</h2>
                         </div>
-
                         <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="col">
-                                    <label asp-for="CartName" class="form-label"></label>
-                                    <input asp-for="CartName" class="form-control">
+                            @if (ViewBag.Cart.Toplam() <= 0)
+                            {
+                                <div class="alert alert-success border-0 shadow-sm">
+                                    <i class="fa fa-gift me-2"></i> Bu sipariş ücretsizdir, kart bilgisi gerekmez.
                                 </div>
-                                <div class="col">
-                                    <label asp-for="CartNumber" class="form-label"></label>
-                                    <input asp-for="CartNumber" class="form-control">
+                               
+                                <input type="hidden" asp-for="CartName" value="FreeOrder" />
+                                <input type="hidden" asp-for="CartNumber" value="0000000000000000" />
+                                <input type="hidden" asp-for="CartExpirationYear" value="2026" />
+                                <input type="hidden" asp-for="CartExpirationMonth" value="01" />
+                                <input type="hidden" asp-for="CartCVV" value="000" />
+                            }
+                            else
+                            {
+                                <div class="row mb-3">
+                                    <div class="col">
+                                        <label asp-for="CartName" class="form-label fw-bold"></label>
+                                        <input asp-for="CartName" class="form-control" placeholder="Kart Üzerindeki İsim">
+                                        <span asp-validation-for="CartName" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col">
+                                        <label asp-for="CartNumber" class="form-label fw-bold"></label>
+                                        <input asp-for="CartNumber" class="form-control" placeholder="xxxx xxxx xxxx xxxx">
+                                        <span asp-validation-for="CartNumber" class="text-danger small"></span>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col">
-                                    <label asp-for="CartExpirationYear" class="form-label"></label>
-                                    <input asp-for="CartExpirationYear" class="form-control">
+                                <div class="row mb-3">
+                                    <div class="col">
+                                        <label asp-for="CartExpirationYear" class="form-label fw-bold">Yıl</label>
+                                        <input asp-for="CartExpirationYear" class="form-control" placeholder="2026">
+                                        <span asp-validation-for="CartExpirationYear" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col">
+                                        <label asp-for="CartExpirationMonth" class="form-label fw-bold">Ay</label>
+                                        <input asp-for="CartExpirationMonth" class="form-control" placeholder="05">
+                                        <span asp-validation-for="CartExpirationMonth" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col">
+                                        <label asp-for="CartCVV" class="form-label fw-bold">CVV</label>
+                                        <input asp-for="CartCVV" class="form-control" placeholder="***">
+                                        <span asp-validation-for="CartCVV" class="text-danger small"></span>
+                                    </div>
                                 </div>
-                                <div class="col">
-                                    <label asp-for="CartExpirationMonth" class="form-label"></label>
-                                    <input asp-for="CartExpirationMonth" class="form-control">
-                                </div>
-                                <div class="col">
-                                    <label asp-for="CartCVV" class="form-label"></label>
-                                    <input asp-for="CartCVV" class="form-control">
-                                </div>
-                            </div>                            
+                            }
                         </div>
                     </div>
                 </div>
 
-                <div class="col-md-4 ">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2 class="h5 mb-0">Sipariş Özeti</h2>
-                        </div>
+                
+                <div class="col-md-4">
+                        <div class="card shadow-sm border-0"> <div class="card-header bg-dark text-white"> <h2 class="h5 mb-0 py-1">Sipariş Özeti</h2>
+                            </div>
 
-                        <div class="card-body">
-                            <div class="list-group">
+                            <div class="card-body">
+                                <div class="list-group">
+                                     @foreach (var item in ViewBag.Cart.CartItems)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center list-group-item border-0 px-0">
+                                            <p class="mb-0 small text-muted">
+                                                @item.Urun.ProductName <span class="fw-bold text-dark">(x @item.Miktar)</span>
+                                            </p>
+                                            <span class="fw-bold">
+                                                @(item.Urun.Price * item.Miktar) ₺
+                                            </span>
+                                        </div>
+                                    }
 
-                                @foreach (var item in ViewBag.Cart.CartItems)
-                                {
-                                    <div class="d-flex justify-content-between align-items-center list-group-item">
-                                        <p class="mb-0">
-                                            @item.Urun.ProductName (x @item.Miktar)
-                                        </p>
-                                        <span>
-                                            @(item.Urun.Price * item.Miktar) ₺
+                                    <div class="d-flex justify-content-between align-items-center list-group-item px-0 text-warning">
+                                        <p class="mb-0">Ara Toplam</p>
+                                        <span>@ViewBag.Cart.araToplam() ₺</span>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center list-group-item px-0 text-success">
+                                        <p class="mb-0 fw-bold">Toplam</p>
+                                        <span class="fs-4 fw-bold">
+                                            @ViewBag.Cart.Toplam() ₺
                                         </span>
                                     </div>
-                                }
-
-                                <div class="d-flex justify-content-between align-items-center list-group-item text-warning">
-                                    <p class="mb-0">Ara Toplam</p>
-                                    <span>@ViewBag.Cart.araToplam() ₺</span>
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center list-group-item text-success">
-                                    <p class="mb-0">Toplam</p>
-                                    <span class="fs-5">
-                                        @ViewBag.Cart.Toplam() ₺
-                                    </span>
+                                <div class="d-grid mt-3">
+                                    <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">
+                                        Ödemeyi Tamamla
+                                    </button>
                                 </div>
-                            </div>
-                            <div class="d-grid mt-3">
-                                <button type="submit" asp-controller="Order" asp-action="Checkout" class="btn btn-primary btn-lg">
-                                    Siparişi Tamamla
-                                </button>
                             </div>
                         </div>
-                    </div>
                 </div>
             </div>    
         </form>

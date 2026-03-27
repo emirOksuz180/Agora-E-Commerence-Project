@@ -1,0 +1,131 @@
+
+@model TwoFactorVerifyViewModel
+
+@{
+    ViewData["Title"] = "İki Adımlı Doğrulama";
+}
+
+@section Bar {
+    <section class="bg-primary p-3">
+        <div class="container">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/">Anasayfa</a></li>
+                    <li class="breadcrumb-item active">Güvenlik Doğrulaması</li>
+                </ol>
+            </nav>
+        </div>
+    </section>
+}
+
+<section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow border-0" style="border-radius: 15px;">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div class="display-4 text-primary mb-3">
+                                <i class="bi bi-shield-lock"></i>
+                            </div>
+                            <h3 class="fw-bold">Doğrulama Gerekli</h3>
+                            <p class="text-muted">
+                                <strong>@Model.MaskedEmail</strong> adresine gönderilen 6 haneli kodu aşağıya giriniz.
+                            </p>
+                        </div>
+
+                        <form asp-action="TwoFactorVerify" method="post">
+                            <input type="hidden" asp-for="RememberMe" />
+                            <input type="hidden" asp-for="ReturnUrl" />
+
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3 small"></div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Doğrulama Kodu</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-key"></i></span>
+                                    <input asp-for="TwoFactorCode" class="form-control form-control-lg text-center fw-bold" 
+                                           placeholder="000000" maxlength="6" autofocus autocomplete="off" />
+                                </div>
+                                <span asp-validation-for="TwoFactorCode" class="text-danger small"></span>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    Doğrula ve Giriş Yap
+                                </button>
+                                <a asp-action="Login" class="btn btn-light">İptal Et</a>
+                            </div>
+                        </form>
+
+                        <div class="text-center mt-4">
+                            <div id="timer" class="badge bg-light text-dark p-2" style="font-size: 0.9rem;">
+                                Kalan Süre: <span id="countdown">03:00</span>
+                            </div>
+                            <div id="resendArea" class="d-none mt-2">
+                                <p class="small text-muted mb-1">Kod gelmedi mi?</p>
+                                <a href="javascript:void(0)" onclick="location.reload()" class="text-primary fw-bold text-decoration-none small">
+                                    Yeni Kod Gönder
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // 3 Dakikalık Geri Sayım Sayacı
+        function startTimer(duration, display) {
+            var timer = duration, minutes, seconds;
+            var interval = setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    clearInterval(interval);
+                    document.getElementById("timer").classList.add("bg-danger", "text-white");
+                    document.getElementById("timer").innerHTML = "Kodun süresi doldu!";
+                    document.getElementById("resendArea").classList.remove("d-none");
+                    
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Süre Doldu!',
+                        text: 'Güvenlik kodunun geçerlilik süresi dolmuştur. Lütfen sayfayı yenileyerek yeni bir kod isteyin.',
+                        confirmButtonColor: '#6610f2'
+                    });
+                }
+            }, 1000);
+        }
+
+        window.onload = function () {
+            var threeMinutes = 60 * 3,
+                display = document.querySelector('#countdown');
+            startTimer(threeMinutes, display);
+        };
+
+        // Eğer Model Error varsa SweetAlert ile göster
+        @if (!ViewData.ModelState.IsValid && ViewData.ModelState["TwoFactorCode"]?.Errors.Count > 0)
+        {
+            <text>
+            Swal.fire({
+                icon: 'error',
+                title: 'Hatalı Kod',
+                text: 'Girdiğiniz doğrulama kodu geçersiz veya süresi dolmuş.',
+                confirmButtonColor: '#6610f2'
+            });
+            </text>
+        }
+    </script>
+}

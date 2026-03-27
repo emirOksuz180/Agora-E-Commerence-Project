@@ -1,4 +1,5 @@
-@model RoleEditModel
+@using webBackend.Models
+@model RolePermissionViewModel
 @{
   Layout = "_AdminLayout";
 }
@@ -15,21 +16,52 @@
           <div class="card-body">
             <div class="table-responsive">
               <div asp-validation-summary="All" class="text-danger"></div>
-              <input type="hidden" name="Id" value="@Model.Id">
-              <form method="post"  asp-action="Edit">
-                <div class="row mb-3 mt-2">
-                  <label asp-for="RoleAdi" class="col-sm-2 col-form-label"></label>
-                  <div class="col-sm-10">
-                    <input asp-for="RoleAdi" class="form-control">
-                    <span asp-validation-for="RoleAdi" class="text-danger"></span>
+              @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Role.Edit")) {
+                <form method="post"  asp-action="Edit" asp-controller="Role">
+                  <input type="hidden" name="Id" value="@Model.RoleId">
+                  <div class="row mb-3 mt-2">
+                    <label asp-for="RoleAdi" class="col-sm-2 col-form-label"></label>
+                    <div class="col-sm-10">
+                      <input asp-for="RoleAdi" class="form-control">
+                      <span asp-validation-for="RoleAdi" class="text-danger"></span>
+                    </div>
                   </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col-sm-10 offset-sm-2">
-                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                    @if (Model.Permissions != null && Model.Permissions.Any())
+                      {
+                          @foreach (var group in Model.Permissions.GroupBy(x => x.GroupName))
+                          { 
+                              <div class="mb-4">
+                                  <h6 class="border-bottom pb-2">@(group.Key ?? "Genel")</h6>
+                                  
+                                  @for (int i = 0; i < Model.Permissions.Count; i++)
+                                  {
+                                      // Sadece bu gruba ait olanları render et
+                                      if (Model.Permissions[i].GroupName == group.Key)
+                                      {
+                                          <div class="form-check">
+                                              <input type="hidden" asp-for="Permissions[i].Id" />
+                                              <input type="hidden" asp-for="Permissions[i].PermissionKey" />
+                                              <input type="hidden" asp-for="Permissions[i].GroupName" />
+
+                                              <input type="checkbox" asp-for="Permissions[i].IsSelected" class="form-check-input" id="p_@i" />
+                                              <label class="form-check-label" for="p_@i">
+                                                  @Model.Permissions[i].PermissionKey
+                                              </label>
+                                          </div>
+                                      }
+                                  }
+                              </div>
+                          }
+                      }
+                  <div class="row mb-3">
+                    <div class="col-sm-10 offset-sm-2">
+                      <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
                   </div>
-                </div>
-              </form>
+                </form>
+              }
+
+              
             </div>
           </div>
         </div>

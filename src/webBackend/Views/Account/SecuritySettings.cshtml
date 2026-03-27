@@ -1,0 +1,30 @@
+@using webBackend.Controllers
+
+@model SecuritySettingsViewModel
+
+
+
+<div class="card shadow border-0" style="border-radius: 15px;">
+    <div class="card-body p-4">
+        <h4 class="fw-bold mb-4">Hesap Güvenliği</h4>
+        <div class="d-flex align-items-center justify-content-between p-3 border rounded-3 mb-3">
+            <div>
+                <h6 class="mb-1 fw-bold">İki Adımlı Doğrulama (E-posta)</h6>
+                <p class="text-muted small mb-0">Giriş yaparken e-postanıza gelen 6 haneli kodu kullanırsınız.</p>
+            </div>
+            @* AMR (Authentication Method Reference)
+            bir kullanıcının sisteme nasıl giriş yaptığını belirten bir Claim (hak/beyan) tipidir. *@
+
+            @* MFA (Multi-Factor Authentication)
+            mfa, bu amr tipinin aldığı değerdir. Eğer bir kullanıcı login olurken şifresinin yanına bir de e-posta kodu (2FA) girmişse, Identity sistemi o kullanıcının kimlik kartına otomatik olarak "amr: mfa" damgasını vurur. *@
+            <form asp-action="ToggleTwoFactor" method="post">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" 
+                      id="twoFactorSwitch" onchange="this.form.submit()" 
+                      @(Model.IsTwoFactorEnabled ? "checked" : "") 
+                      style="cursor:pointer; width: 3em; height: 1.5em;">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

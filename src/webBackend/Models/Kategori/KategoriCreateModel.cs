@@ -6,7 +6,7 @@ using webBackend.Validation;
 
 public class KategoriCreateModel
 {
-  [Key]
+    [Key]
     public int Id { get; set; }
 
     [Required(ErrorMessage = "Kategori adı boş bırakılamaz.")]

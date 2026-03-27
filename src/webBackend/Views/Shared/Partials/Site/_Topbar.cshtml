@@ -10,7 +10,8 @@
 
                     @if (User.Identity?.IsAuthenticated == true)
                     {
-                        @if (User.IsInRole("Admin"))
+                        
+                        if (User.IsInRole("Admin") || User.HasClaim(c => c.Type == "Permission"))
                         {
                             <a asp-controller="Admin" asp-action="Index" class="btn btn-success" style="width: 122px; height: 60px" target="_blank">
                                 <i class="fa-solid fa-lock"></i> <span class="ms-1 d-none d-sm-inline-block">Admin</span>

@@ -1,5 +1,19 @@
 @model Product
 
+@* Üst kısımdaki görsel taşmasını engelleyen stil *@
+<style>
+    .img-big-wrap img {
+        max-height: 400px;
+        width: auto;
+        max-width: 100%;
+        object-fit: contain;
+    }
+    .card-img-top {
+        height: 180px;
+        object-fit: contain;
+    }
+</style>
+
 @section Bar {
     @await Component.InvokeAsync("Navbar")
 }
@@ -9,50 +23,42 @@
         <div class="row">
             <div class="col-lg-5">
                 <div class="gallery-wrap">
-                    <div class="img-big-wrap img-thumbnail">
+                    <div class="img-big-wrap img-thumbnail bg-white text-center">
                         <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
-                            <img src="@Model.ImageUrl" alt="">
+                            <img src="@Model.ImageUrl" alt="@Model.ProductName">
                         </a>
                     </div>
-                    <div class="thumbs-wrap">
-                        <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
-                            <img src="@Model.ImageUrl" height="60" alt="">
-                        </a>
-                        <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
-                            <img src="@Model.ImageUrl" height="60" alt="">
-                        </a>
-                        <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
-                            <img src="@Model.ImageUrl" height="60" alt="">
-                        </a>
-                        <a href="@Model.ImageUrl" data-type="image" data-fslightbox>
-                            <img src="@Model.ImageUrl" height="60" alt="">
-                        </a>
-                    </div>
+                    @* Thumbs wrap kısmı opsiyonel, görselin altına küçük resimler dizer *@
                 </div>
             </div>
             <div class="col-lg-7">
                 <article>
                     <h4 class="title text-dark">@Model.ProductName</h4>
-                    <div class="rating-wrap">
-                        <span class="fa fa-star checked"></span>
-                        <span class="fa fa-star checked"></span>
-                        <span class="fa fa-star checked"></span>
-                        <span class="fa fa-star checked"></span>
-                        <span class="fa fa-star"></span>
+                    <p class="text-success fw-bold">Stokta Mevcut</p>
+                    
+                    <div class="mb-3">
+                        @if (Model.Price <= 0)
+                        {
+                            <b class="price h4 text-success">Ücretsiz</b>
+                        }
+                        else
+                        {
+                            <b class="price h4 text-primary">@Model.Price.ToString("C2")</b>
+                        }
                     </div>
-                    <p class="text-success">Stokta</p>
-                    <div class="mb-3"><b class="price h5">@Model.Price ₺</b></div>
-                    <div class="product-description mb-3">@Model.ProductDescription</div>
+
+                    <div class="product-description mb-3 text-muted">@Model.ProductDescription</div>
+                    
                     <div class="buttons">
-                        <form action="/Cart/AddToCart" method="post" class="me-1 d-inline">
+                        <form action="/Cart/AddToCart" method="post" class="d-inline">
                             <input type="hidden" name="urunId" value="@Model.ProductId">
-                            <button type="submit" href="#" class="btn btn-warning">
-                                <i class="fa fa-shopping-basket "></i> Sepete Ekle
+                            <button type="submit" class="btn btn-warning px-4">
+                                <i class="fa fa-shopping-basket me-1"></i> Sepete Ekle
                             </button>
                         </form>
-                        <a href="#" class="btn btn-light">
-                            <i class="fa-regular fa-heart basket me-1"></i> Listeye Ekle
-                        </a>
+                        <button class="btn btn-outline-danger ms-2">
+                            <i class="fa-regular fa-heart"></i>
+                        </button>
                     </div>
                 </article>
             </div>
@@ -60,44 +66,50 @@
     </div>
 </section>
 
-
 @{
     var urunler = (List<Product>)ViewData["BenzerUrunler"]!;
 
-    if (urunler.Count > 0)
+    if (urunler != null && urunler.Count > 0)
     {
-        <section class="mt-3">
+        <section class="mt-5 border-top pt-4">
             <div class="container">
-                <h4 class="mb-3">Benzer Ürünler</h4>
+                <h4 class="mb-4">Benzer Ürünler</h4>
                 <div class="row gy-3">
-
                     @foreach (var item in urunler)
                     {
-                        <div class="col-lg-3 col-sm-6 col-12">
-                            <div class="card shadow">
-                                <div class="img-wrap">
-                                    <span class="fa fa-regular fa-heart"></span>
-                                    <img src="@item.ImageUrl" alt="@item.ProductName" class="card-img-top">
-                                </div>
+                        <div class="col-lg-3 col-sm-6">
+                            <div class="card shadow-sm h-100 border-0">
+                                <img src="@item.ImageUrl" class="card-img-top p-3" alt="@item.ProductName">
+                                <div class="card-body d-flex flex-column">
+                                    <a asp-controller="Urun" asp-action="Details" asp-route-id="@item.ProductId" 
+                                       class="text-dark text-decoration-none fw-bold text-truncate d-block mb-2">@item.ProductName</a>
+                                    
+                                    <div class="mt-auto">
+                                        <div class="mb-2">
+                                            @if (item.Price <= 0)
+                                            {
+                                                <span class="text-success fw-bold">Ücretsiz</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-primary fw-bold">@item.Price.ToString("C2")</span>
+                                            }
+                                        </div>
 
-                                <div class="border-top info-wrap">
-                                    <a asp-controller="Urun" asp-action="Details" asp-route-id="@item.ProductId"
-                                        class="title text-truncate">@item.ProductName</a>
-                                    <div class="price-wrap mb-3">
-                                        <span class="price-discount">@item.Price ₺</span>
-                                        @* <del class="price">49.999 ₺</del> *@
+                                        @* BENZER ÜRÜN SEPETE EKLEME FORMU *@
+                                        <form action="/Cart/AddToCart" method="post">
+                                            <input type="hidden" name="urunId" value="@item.ProductId">
+                                            <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                                                <i class="fa fa-shopping-basket me-1"></i> Sepete Ekle
+                                            </button>
+                                        </form>
                                     </div>
-                                    <a href="#" class="btn btn-light w-100">
-                                        <i class="fa fa-shopping-basket me-1"></i> Sepete Ekle
-                                    </a>
                                 </div>
                             </div>
                         </div>
                     }
-
                 </div>
             </div>
         </section>
     }
-
 }

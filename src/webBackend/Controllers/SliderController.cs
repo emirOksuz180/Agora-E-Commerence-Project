@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace webBackend.Controllers;
 
 
-[Authorize(Roles ="Admin")]
+[Authorize(Policy = "Slider.View")]
 public class SliderController : Controller
 {
     private readonly AgoraDbContext _context;
@@ -20,17 +20,20 @@ public class SliderController : Controller
         {
              SliderId = i.SliderId,
              SliderTitle = i.SliderTitle,
+             SliderDescription = i.SliderDescription,
              IsActive = i.IsActive,
              DisplayOrder = i.DisplayOrder,
              ImageUrl = i.ImageUrl
         }).ToList());
     }
 
+    [Authorize(Policy = "Slider.Create")]
     public ActionResult Create()
     {
         return View();
     }
 
+    [Authorize(Policy = "Slider.Create")]
     [HttpPost]
     public async Task<ActionResult> Create(SliderCreateModel model)
     {
@@ -67,6 +70,7 @@ public class SliderController : Controller
         return View(model);
     }
 
+    [Authorize(Policy = "Slider.Edit")]
     public ActionResult Edit(int id)
     {
         var entity = _context.Sliders.Select(i => new SliderEditModel
@@ -83,6 +87,7 @@ public class SliderController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "Slider.Edit")]
     public async Task<ActionResult> Edit(int id, SliderEditModel model)
     {
         if (id != model.SliderId)
@@ -126,6 +131,7 @@ public class SliderController : Controller
         return View(model);
     }
 
+    [Authorize(Policy = "Slider.Delete")]
     public ActionResult Delete(int? id)
     {
         if (id == null)
@@ -143,6 +149,7 @@ public class SliderController : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = "Slider.Delete")]
     public ActionResult DeleteConfirm(int? id)
     {
         if (id == null)

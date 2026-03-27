@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace webBackend.Controllers
 {
 
-    [Authorize(Roles ="Admin")]
+    [Authorize(Policy = "Product.View")]
     public class UrunController : Controller
     {
         private readonly AgoraDbContext _context;
@@ -23,31 +23,32 @@ namespace webBackend.Controllers
         }
 
 
-        
-        public ActionResult Index(int? kategori)
+    [Authorize(Policy = "Product.View")]
+    public async Task<ActionResult> Index(int? kategori)
+    {
+        var query = _context.Products.AsQueryable();
+
+        if (kategori != null)
         {
-
-            var query = _context.Products.AsQueryable();
-
-            if(kategori != null)
-            {
-                query = query.Where(i=> i.CategoryId == kategori);
-            }
-            var urunler = query.Select(i => new UrunGetModel
-            {
-                ProductId = i.ProductId,
-                ProductName = i.ProductName,
-                Price = i.Price,
-                IsActive = i.IsActive,
-                AnaSayfa = i.AnaSayfa,
-                Category = i.Category,
-                ImageUrl = i.ImageUrl
-            }).ToList();
-
-            ViewBag.Categories = new SelectList(_context.Categories.ToList(), "Id", "Name" , kategori);
-
-            return View(urunler);
+            query = query.Where(i => i.CategoryId == kategori);
         }
+
+        var urunler = await query.Select(i => new UrunViewModel
+        {
+            ProductId = i.ProductId,
+            ProductName = i.ProductName,
+            Price = i.Price,
+            IsActive = i.IsActive,
+            AnaSayfa = i.AnaSayfa,
+            CategoryId = i.CategoryId, 
+            CategoryName = i.Category.Name, 
+            ImageUrl = i.ImageUrl 
+        }).ToListAsync();
+
+        ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", kategori);
+
+        return View(urunler);
+    }
 
         [AllowAnonymous]
         public ActionResult List(string url, string q)
@@ -85,6 +86,7 @@ namespace webBackend.Controllers
             return View(product);
         }
 
+        
         [HttpGet]
         public ActionResult Create()
         {
@@ -92,160 +94,148 @@ namespace webBackend.Controllers
             return View();
         }
 
+        [Authorize(Policy = "Product.Create")]
         [HttpPost]
-        public async Task<ActionResult> Create(UrunCreateModel model)
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Create(UrunViewModel model)
         {
+            
             if (model.ImageFile == null || model.ImageFile.Length == 0)
             {
-                ModelState.AddModelError("ImageUrl", "Resim Seçmelisiniz");
+                ModelState.AddModelError("ImageFile", "Lütfen bir ürün resmi seçiniz.");
             }
 
             if (ModelState.IsValid)
             {
-                string? fileName = null;
+                string fileName = "default.png"; 
 
-                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                if (model.ImageFile != null)
                 {
-                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
                     var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
-
-                    if (!allowedExtensions.Contains(extension) || model.ImageFile.Length > 5 * 1024 * 1024)
-                    {
-                        ModelState.AddModelError("ImageUrl", "Geçersiz resim dosyası.");
-                        ViewData["Kategoriler"] = _context.Categories.ToList();
-                        return View(model);
-                    }
-
-                    try
-                    {
-                        using var stream = model.ImageFile!.OpenReadStream();
-                        using var image = Image.Load<Rgba32>(stream);
-                    }
-                    catch
-                    {
-                        ModelState.AddModelError("ImageUrl", "Geçerli bir resim dosyası değil.");
-                        ViewData["Kategoriler"] = _context.Categories.ToList();
-                        return View(model);
-                    }
-
                     fileName = Guid.NewGuid().ToString() + extension;
                     var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", fileName);
 
-                    using var fileStream = new FileStream(path, FileMode.Create);
-                    await model.ImageFile!.CopyToAsync(fileStream);
+                    using (var fileStream = new FileStream(path, FileMode.Create))
+                    {
+                        await model.ImageFile.CopyToAsync(fileStream);
+                    }
                 }
 
-                var entity = new Product()
+                
+                var entity = new Product() 
                 {
                     ProductName = model.ProductName,
-                    Price = (decimal)(model.Price ?? 0),
+                    Price = model.Price,
+                    ProductDescription = model.Description, 
                     IsActive = model.IsActive,
                     AnaSayfa = model.AnaSayfa,
-                    CategoryId = (int)model.CategoryId!,
+                    CategoryId = model.CategoryId,
                     ImageUrl = "/img/" + fileName
                 };
 
                 _context.Products.Add(entity);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 return RedirectToAction("Index");
             }
 
-            ViewBag.Kategoriler = new SelectList(_context.Categories.ToList(), "Id", "Name");
+            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name");
             return View(model);
         }
 
-        public ActionResult Edit(int id)
+        [HttpGet]
+        [Authorize(Policy = "Product.Edit")]
+        public async Task<ActionResult> Edit(int id)
         {
-            var entity = _context.Products.Select(i => new UrunEditModel
-            {
-                ProductId = i.ProductId,
-                ProductName = i.ProductName,
-                ProductDescription = i.ProductDescription,
-                IsActive = i.IsActive,
-                AnaSayfa = i.AnaSayfa,
-                Price = i.Price,
-                CategoryId = i.CategoryId,
-                ImageUrl = i.ImageUrl
-            }).FirstOrDefault(i => i.ProductId == id);
+            
+            var entity = await _context.Products
+                .Select(i => new UrunEditModel
+                {
+                    ProductId = i.ProductId,
+                    ProductName = i.ProductName,
+                    Description = i.ProductDescription!,
+                    IsActive = i.IsActive,
+                    AnaSayfa = i.AnaSayfa,
+                    Price = i.Price.ToString("F2", new System.Globalization.CultureInfo("tr-TR")),
+                    CategoryId = i.CategoryId,
+                    ImageUrl = i.ImageUrl
+                }).FirstOrDefaultAsync(i => i.ProductId == id);
 
-            ViewData["Kategoriler"] = _context.Categories.ToList();
+            if (entity == null)
+            {
+                return NotFound();
+            }
+
+            
+            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", entity.CategoryId);
+
             return View(entity);
         }
 
         [HttpPost]
+        [Authorize(Policy = "Product.Edit")]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> Edit(int id, UrunEditModel model)
         {
-            if (id != model.ProductId)
-            {
-                return RedirectToAction("Index");
-            }
+            if (id != model.ProductId) return BadRequest();
 
             if (ModelState.IsValid)
             {
-                var entity = _context.Products.FirstOrDefault(i => i.ProductId == model.ProductId);
-                if (entity == null)
-                    return NotFound();
+                var product = await _context.Products.FindAsync(id);
+                if (product == null) return NotFound();
 
-                entity.ProductName = model.ProductName;
-                entity.ProductDescription = model.ProductDescription;
-                entity.Price = model.Price ?? 0;
-                entity.IsActive = model.IsActive;
-                entity.AnaSayfa = model.AnaSayfa;
-                entity.CategoryId = (int)model.CategoryId!;
-
-                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                // Fiyat İşleme: Kullanıcının girdiği string formatını decimal'e mühürlüyoruz
+                string priceValue = model.Price.Replace(".", ","); // Önce her şeyi virgül formatına çekelim
+                if (decimal.TryParse(priceValue, System.Globalization.NumberStyles.Any, new System.Globalization.CultureInfo("tr-TR"), out decimal parsedPrice))
                 {
-                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
-                    var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
-
-                    if (!allowedExtensions.Contains(extension) || model.ImageFile.Length > 5 * 1024 * 1024)
-                    {
-                        ModelState.AddModelError("ImageFile", "Geçersiz resim dosyası veya boyutu çok büyük.");
-                        ViewData["Kategoriler"] = _context.Categories.ToList();
-                        return View(model);
-                    }
-
-                    try
-                    {
-                        using var stream = model.ImageFile.OpenReadStream();
-                        using var image = Image.Load<Rgba32>(stream);
-                    }
-                    catch
-                    {
-                        ModelState.AddModelError("ImageFile", "Geçerli bir resim dosyası değil.");
-                        ViewData["Kategoriler"] = _context.Categories.ToList();
-                        return View(model);
-                    }
-
-                    var newFileName = Guid.NewGuid().ToString() + extension;
-                    var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", newFileName);
-
-                    using var fileStream = new FileStream(path, FileMode.Create);
-                    await model.ImageFile.CopyToAsync(fileStream);
-
-                    if (!string.IsNullOrEmpty(entity.ImageUrl))
-                    {
-                        var oldFileName = Path.GetFileName(entity.ImageUrl);
-                        var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", oldFileName);
-                        if (System.IO.File.Exists(oldPath))
-                            System.IO.File.Delete(oldPath);
-                    }
-
-                    entity.ImageUrl = "/img/" + newFileName;
+                    product.Price = parsedPrice;
+                }
+                else
+                {
+                    // Eğer tr-TR yemezse global noktayı dene
+                    decimal.TryParse(model.Price.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out parsedPrice);
+                    product.Price = parsedPrice;
                 }
 
-                _context.SaveChanges();
-                TempData["Mesaj"] = $"{entity.ProductName} ürünü güncellendi";
+                product.ProductName = model.ProductName;
+                product.ProductDescription = model.Description; 
+                product.IsActive = model.IsActive;
+                product.AnaSayfa = model.AnaSayfa;
+                product.CategoryId = model.CategoryId;
+
+                // Resim Yükleme İşlemi
+                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                {
+                    var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
+                    var fileName = Guid.NewGuid().ToString() + extension;
+                    var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", fileName);
+
+                    // Klasör yoksa oluştur
+                    if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img")))
+                    {
+                        Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img"));
+                    }
+
+                    using (var fileStream = new FileStream(path, FileMode.Create))
+                    {
+                        await model.ImageFile.CopyToAsync(fileStream);
+                    }
+                    product.ImageUrl = "/img/" + fileName;
+                }
+
+                _context.Products.Update(product);
+                await _context.SaveChangesAsync();
+
                 return RedirectToAction("Index");
             }
 
-            // ModelState geçersizse, hata durumunda geri dön
-            ViewData["Kategoriler"] = _context.Categories.ToList();
+            // Hata durumunda kategorileri tekrar dolduruyoruz (Seçili kategori ile birlikte)
+            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", model.CategoryId);
             return View(model);
         }
 
-
+        [HttpGet]
+        [Authorize(Policy = "Product.Delete")]
         public ActionResult Delete(int? Id)
         {
             if (Id == null)
@@ -263,8 +253,8 @@ namespace webBackend.Controllers
             return RedirectToAction("Index");
         }
 
-
-        [HttpPost]
+        [Authorize(Policy = "Product.Delete")]
+        [HttpPost, ActionName("Delete")]
         public ActionResult DeleteConfirm(int? Id)
         {
 

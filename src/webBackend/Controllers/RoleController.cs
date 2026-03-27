@@ -5,12 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using webBackend.Models;
 using webBackend.Models.Permissons;
+using System.Security.Claims;
 
 namespace webBackend.Controllers;
 
 
 
-[Authorize(Roles ="Admin")]
+[Authorize(Policy = "Role.View")]
 public class RoleController : Controller
 {
   private RoleManager<AppRole> _rolemanager;
@@ -27,6 +28,7 @@ public class RoleController : Controller
 
   }
 
+  [Authorize(Policy = "Role.View")]  
   public async Task<IActionResult> Index()
   {
 
@@ -50,77 +52,170 @@ public class RoleController : Controller
     
   }
 
-  public ActionResult Create()
-  {
-    return View();
-  }
+  [HttpGet]
+  [Authorize(Policy = "Role.Create")]
+  public async Task<IActionResult> Create()
+  { 
 
-  [HttpPost]
-  public async Task<ActionResult> Create(RoleCreateModel model)
-  {
-    if(ModelState.IsValid)
+
+    var allPermissions = await _context.AppPermissions.ToListAsync();
+
+    var model = new RolePermissionViewModel 
     {
-      var result = await _rolemanager.CreateAsync(new AppRole {Name = model.RoleAdi});
+        // ÖNEMLİ: Listeyi burada dolduruyoruz
+        Permissions = allPermissions.Select(p => new PermissionItemViewModel
+        {
+            Id = p.Id,
+            PermissionKey = p.PermissionKey,
+            GroupName = p.GroupName,
+            Description = p.Description,
+            IsSelected = false 
+        }).ToList()
+    };  
 
-      if(result.Succeeded)
-      {
-        return RedirectToAction("Index");
-      }
 
-      foreach(var error in result.Errors)
-      {
-        ModelState.AddModelError("" , error.Description);
-      }
 
-    }
     return View(model);
   }
 
-  public async Task<ActionResult> Edit(string id)
-  {
-    var entity = await _rolemanager.FindByIdAsync(id);
-
-    if(entity != null)
-    {
-      return View(new RoleEditModel {Id = entity.Id , RoleAdi = entity.Name!});
-    }
-
-    return RedirectToAction("Index");
-
-  }
-
   [HttpPost]
-  public async Task<ActionResult> Edit(string id , RoleEditModel model)
-  {
-
-    if(ModelState.IsValid)
+  [Authorize(Policy = "Role.Create")]
+public async Task<ActionResult> Create(RolePermissionViewModel model) // Modeli güncelledik
+{
+    if (ModelState.IsValid)
     {
-      var entity = await _rolemanager.FindByIdAsync(id);
+        // 1. Önce Rolü Oluşturuyoruz
+        var role = new AppRole { Name = model.RoleAdi };
+        var result = await _rolemanager.CreateAsync(role);
 
-      if(entity != null)
-      {
-        entity.Name = model.RoleAdi;
-        var result = await _rolemanager.UpdateAsync(entity);
-
-        if(result.Succeeded)
+        if (result.Succeeded)
         {
-          return RedirectToAction("Index");
+            
+            if (model.Permissions != null)
+            {
+                var selectedPermissions = model.Permissions.Where(x => x.IsSelected).ToList();
+                foreach (var perm in selectedPermissions)
+                {
+                    
+                    await _rolemanager.AddClaimAsync(role, new Claim("Permission", perm.PermissionKey));
+                }
+            }
+
+            return RedirectToAction("Index");
         }
 
-        foreach(var  error in result.Errors)
+        foreach (var error in result.Errors)
         {
-          ModelState.AddModelError("" , error.Description);
+            ModelState.AddModelError("hata", error.Description);
         }
-
-      }
-
     }
 
-    return View();
+    
+    return View(model);
+}
 
-  }
+[HttpGet]
+[Authorize(Policy = "Role.Edit")]
+public async Task<IActionResult> Edit(int id)
+{
+    
+    var role = await _rolemanager.FindByIdAsync(id.ToString());
+    
+    if (role == null)
+    {
+        return NotFound();
+    }
 
+    
+    var allPermissions = await _context.AppPermissions.ToListAsync();
 
+    
+    var roleClaims = await _rolemanager.GetClaimsAsync(role);
+    var authorizedPermissions = roleClaims
+        .Where(c => c.Type == "Permission")
+        .Select(c => c.Value)
+        .ToList();
+
+    var model = new RolePermissionViewModel
+    {
+        RoleId = role.Id, 
+        RoleAdi = role.Name!,
+        Permissions = allPermissions.Select(p => new PermissionItemViewModel
+        {
+            Id = p.Id,
+            PermissionKey = p.PermissionKey,
+            GroupName = p.GroupName,
+            Description = p.Description,
+            
+            IsSelected = authorizedPermissions.Contains(p.PermissionKey)
+        }).ToList()
+    };
+
+    return View(model);
+}
+
+[HttpPost]
+[Authorize(Policy = "Role.Edit")]
+public async Task<IActionResult> Edit(int id, RolePermissionViewModel model)
+{
+
+    if (id != model.RoleId)
+    {
+         model.RoleId = id; 
+    }
+    
+    if (!ModelState.IsValid)
+    {
+        
+        var allPermissions = await _context.AppPermissions.ToListAsync();
+        model.Permissions = allPermissions.Select(p => new PermissionItemViewModel {
+            
+        }).ToList();
+        return View(model);
+    }
+
+    var role = await _rolemanager.FindByIdAsync(model.RoleId.ToString());
+    if (role == null)
+    {
+        return NotFound();
+    }
+
+    
+    role.Name = model.RoleAdi;
+    var updateResult = await _rolemanager.UpdateAsync(role);
+
+    if (updateResult.Succeeded)
+    {
+        
+        var existingClaims = await _rolemanager.GetClaimsAsync(role);
+        foreach (var claim in existingClaims.Where(c => c.Type == "Permission"))
+        {
+            await _rolemanager.RemoveClaimAsync(role, claim);
+        }
+
+        
+        if (model.Permissions != null)
+        {
+            var selectedPermissions = model.Permissions.Where(x => x.IsSelected).ToList();
+            foreach (var perm in selectedPermissions)
+            {
+                await _rolemanager.AddClaimAsync(role, new Claim("Permission", perm.PermissionKey));
+            }
+        }
+
+        return RedirectToAction("Index");
+    }
+
+    foreach (var error in updateResult.Errors)
+    {
+        ModelState.AddModelError("", error.Description);
+    }
+
+    return View(model);
+}
+
+  
+  [Authorize(Policy = "Role.Delete")]
   public async Task<ActionResult> Delete(string? id)
   {
     if(id == null)
@@ -140,7 +235,7 @@ public class RoleController : Controller
 
   }
 
-
+  [Authorize(Policy = "Role.Delete")]        
   public async Task<ActionResult> DeleteConfirm(string? id)
   {
     

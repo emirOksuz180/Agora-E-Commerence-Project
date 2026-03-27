@@ -5,8 +5,8 @@ using webBackend.Models;
 
 namespace webBackend.Controllers;
 
-
-[Authorize(Roles ="Admin")]
+[Authorize]
+[Authorize(Policy = "Category.View")]
 public class KategoriController : Controller
 {
 
@@ -17,6 +17,7 @@ public class KategoriController : Controller
     _context = context;
   }
 
+  [Authorize(Policy = "Category.View")]
   public ActionResult Index()
   {
 
@@ -32,13 +33,14 @@ public class KategoriController : Controller
   }
 
 
-  [HttpGet]
+[HttpGet]
 public ActionResult Create()
 {
     return View();
 }
 
 [HttpPost]
+[Authorize(Policy = "Category.Create")]
 public ActionResult Create(KategoriCreateModel model)
 {
     if (!ModelState.IsValid)
@@ -66,6 +68,61 @@ public ActionResult Create(KategoriCreateModel model)
 }
 
 
+
+[HttpGet]
+[Authorize(Policy = "Category.Edit")]
+public async Task<IActionResult> Edit(int? id)
+{
+    if (id == null) return NotFound();
+
+    var category = await _context.Categories
+        .Select(c => new KategoriEditModel 
+        {
+            Id = c.Id,
+            Name = c.Name,
+            
+        })
+        .FirstOrDefaultAsync(m => m.Id == id);
+
+    if (category == null) return NotFound();
+
+    return View(category);
+}
+
+[HttpPost]
+[Authorize(Policy = "Category.Edit")]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(int id, KategoriEditModel model)
+{
+    if (id != model.Id) return BadRequest();
+
+    if (ModelState.IsValid)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null) return NotFound();
+
+        category.Name = model.Name;
+        
+
+        try
+        {
+            _context.Update(category);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!_context.Categories.Any(e => e.Id == id)) return NotFound();
+            else throw;
+        }
+        return RedirectToAction(nameof(Index));
+    }
+    return View(model);
+}
+
+
+
+
+  [Authorize(Policy = "Category.Delete")]
   public ActionResult Delete(int? Id)
   {
     if(Id == null)
@@ -85,6 +142,7 @@ public ActionResult Create(KategoriCreateModel model)
 
 
   [HttpPost]
+  [Authorize(Policy = "Category.Delete")]
   public ActionResult DeleteConfirm(int? Id)
   {
     

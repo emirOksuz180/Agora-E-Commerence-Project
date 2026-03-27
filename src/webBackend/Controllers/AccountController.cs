@@ -7,6 +7,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using webBackend.Services;
 
+
 namespace webBackend.Controllers;
 
 public class AccountController : Controller
@@ -107,56 +108,189 @@ public async Task<ActionResult> Create(RegisterViewModel model)
     }
 
     [HttpPost]
-    public async Task<ActionResult> Login(AccountLoginModel model , string? returnUrl)
+    [ValidateAntiForgeryToken]
+    public async Task<ActionResult> Login(AccountLoginModel model, string? returnUrl)
+{
+    if (ModelState.IsValid)
     {
-        if(ModelState.IsValid)
-        {
+        var user = await _userManager.FindByEmailAsync(model.Email);
 
-            var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user != null)
+        {
+            // Güvenlik için önceki oturum kalıntılarını temizle
+            await _signInManager.SignOutAsync();
 
             
+            var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.BeniHatirla, true);
 
-            if(user!=null)
+            // birinci durum : 2 faktorlu doğrulama gerekiyor 
+            if (result.RequiresTwoFactor)
             {
-                await _signInManager.SignOutAsync();
+                
+                var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
 
-               var result = await _signInManager.PasswordSignInAsync(user , model.Password , model.BeniHatirla , false);
+                
+                await _emailService.SendEmailAsync(user.Email!, "Giriş Doğrulama Kodu", 
+                    $"<div style='font-family:Arial; padding:20px; border:1px solid #eee; border-radius:10px;'>" +
+                    $"<h2 style='color:#6610f2;'>Güvenli Giriş</h2>" +
+                    $"<p>Sisteme erişmek için doğrulama kodunuz:</p>" +
+                    $"<h1 style='letter-spacing:5px; color:#333;'>{token}</h1>" +
+                    $"<p style='color:#888; font-size:12px;'>Bu kod 3 dakika boyunca geçerlidir.</p></div>");
 
-                    if (result.Succeeded)
-                     {
-                            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                            {
-                                return Redirect(returnUrl);
-                            }
-
-                            await _cartService.TransferCartToUser(user.UserName!);      
-
-                        return RedirectToAction("Index", "Home");
-                      }
-                else if(result.IsLockedOut)
-                {
-                    var lockoutDate = await _userManager.GetLockoutEndDateAsync(user);
-                    var timeleft = lockoutDate.Value - DateTime.UtcNow;
-                    ModelState.AddModelError("" , $"Hesabınız kilitlendi lütfen {timeleft.Minutes + 1}");
-                }
-                else
-                {
-                    ModelState.AddModelError("" , "hatalı parola");
-                }
-
+                
+                return RedirectToAction("TwoFactorVerify", new { ReturnUrl = returnUrl, RememberMe = model.BeniHatirla });
             }
+
+            //  ikinci durum: giriş basarılı iki faktorlu dogrulama kapalıysa
+            if (result.Succeeded)
+            {
+                await _cartService.TransferCartToUser(user.UserName!);
+
+                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+                return RedirectToAction("Index", "Home");
+            }
+
+            
+            if (result.IsLockedOut)
+            {
+                var lockoutDate = await _userManager.GetLockoutEndDateAsync(user);
+                var timeleft = lockoutDate!.Value - DateTime.UtcNow;
+                ModelState.AddModelError("", $"Çok fazla hatalı deneme! Lütfen {timeleft.Minutes + 1} dakika sonra tekrar deneyin.");
+            }
+            
+            
             else
             {
-                ModelState.AddModelError("" , "Hatalı email");
+                ModelState.AddModelError("", "E-posta veya şifre hatalı.");
             }
-            
         }
-        return View(model);
+        else
+        {
+            ModelState.AddModelError("", "Kullanıcı bulunamadı.");
+        }
+    }
+    
+    
+    return View(model);
+}
+
+    
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> TwoFactorVerify(bool rememberMe, string? returnUrl = null)
+    {
+        
+        var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
+        
+        if (user == null)
+        {
+            
+            return RedirectToAction(nameof(Login));
+        }
+
+        
+        var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
+
+        
+        await _emailService.SendEmailAsync(user.Email!, "Giriş Doğrulama Kodu", 
+            $"<div style='font-family:Arial; padding:20px; border:1px solid #eee;'> " +
+            $"<h2>Güvenlik Doğrulaması</h2>" +
+            $"<p>Sisteme giriş yapabilmek için kullanmanız gereken doğrulama kodunuz:</p>" +
+            $"<h1 style='color:#2c3e50; letter-spacing:5px;'>{token}</h1>" +
+            $"<p>Bu kod 3 dakika boyunca geçerlidir.</p></div>");
+
+        
+        string email = user.Email!;
+        string maskedEmail = email.Substring(0, 2) + "****@" + email.Split('@')[1];
+
+        
+        var viewModel = new TwoFactorVerifyViewModel
+        {
+            RememberMe = rememberMe,
+            ReturnUrl = returnUrl,
+            MaskedEmail = maskedEmail
+        };
+
+        return View(viewModel);
     }
 
 
 
-  [Authorize]
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken] 
+    public async Task<IActionResult> TwoFactorVerify(TwoFactorVerifyViewModel model)
+    {
+        
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        
+        var result = await _signInManager.TwoFactorSignInAsync("Email", model.TwoFactorCode, model.RememberMe, false);
+
+        if (result.Succeeded)
+        {
+            
+            return LocalRedirect(model.ReturnUrl ?? "/");
+        }
+
+        if (result.IsLockedOut)
+        {
+            // Çok fazla hatalı deneme yapıldıysa
+            ModelState.AddModelError(string.Empty, "Çok fazla hatalı deneme yaptınız. Hesabınız geçici olarak kilitlendi.");
+            return View(model);
+        }
+
+        // Kod yanlışsa veya süresi dolmuşsa
+        ModelState.AddModelError("TwoFactorCode", "Girdiğiniz doğrulama kodu geçersiz.");
+        return View(model);
+    }
+
+
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> SecuritySettings()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return RedirectToAction("Login"); 
+
+        var model = new SecuritySettingsViewModel
+        {
+            IsTwoFactorEnabled = await _userManager.GetTwoFactorEnabledAsync(user)
+        };
+
+        return View(model); 
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleTwoFactor()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return NotFound();
+
+        var currentStatus = await _userManager.GetTwoFactorEnabledAsync(user);
+        var result = await _userManager.SetTwoFactorEnabledAsync(user, !currentStatus);
+
+        if (result.Succeeded)
+        {
+            
+            await _signInManager.RefreshSignInAsync(user); 
+            TempData["Mesaj"] = !currentStatus ? "2FA Aktif" : "2FA Kapalı";
+        }
+
+        return RedirectToAction(nameof(SecuritySettings));
+    }
+
+
+
+    [Authorize]
     public async Task<ActionResult> LogOut()
     {
         await _signInManager.SignOutAsync();
@@ -407,4 +541,9 @@ public async Task<IActionResult> ConfirmEmail(string userId, string token)
 
 
 
+}
+
+internal class SecuritySettingsViewModel
+{
+  public bool IsTwoFactorEnabled { get; set; }
 }

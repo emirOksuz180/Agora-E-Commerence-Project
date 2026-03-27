@@ -8,11 +8,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 
-[Authorize(Roles = "Admin")]
+
+[Authorize]
 public class AdminController: Controller
 {
   public ActionResult Index()
   {
+    if (!User.IsInRole("Admin") && !User.HasClaim(c => c.Type == "Permission"))
+    {
+        return Forbid(); 
+    }
+    
     return View();
   }
   
