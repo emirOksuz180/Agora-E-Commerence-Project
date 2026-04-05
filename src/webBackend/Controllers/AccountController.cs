@@ -117,13 +117,13 @@ public async Task<ActionResult> Create(RegisterViewModel model)
 
         if (user != null)
         {
-            // Güvenlik için önceki oturum kalıntılarını temizle
+            
             await _signInManager.SignOutAsync();
 
             
             var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.BeniHatirla, true);
 
-            // birinci durum : 2 faktorlu doğrulama gerekiyor 
+            //  2 faktorlu doğrulama gerekiyor 
             if (result.RequiresTwoFactor)
             {
                 
@@ -514,7 +514,7 @@ public async Task<IActionResult> ConfirmEmail(string userId, string token)
         return RedirectToAction("Login");
     }
 
-    //  replay engeli
+    
     if (user.EmailConfirmed)
     {
         TempData["Mesaj"] = "Bu email adresi zaten doğrulanmış.";
@@ -529,7 +529,10 @@ public async Task<IActionResult> ConfirmEmail(string userId, string token)
         return RedirectToAction("Login");
     }
 
-    // güvenlik önlemi
+    // ASP.NET Identity içinde her kullanıcıya ait gizli bir değerdir.
+
+    // Amaç:
+    // Kullanıcının oturumlarının hâlâ geçerli olup olmadığını kontrol etmek.
     await _userManager.UpdateSecurityStampAsync(user);
 
     TempData["Mesaj"] = "Email adresiniz başarıyla doğrulandı. Giriş yapabilirsiniz.";

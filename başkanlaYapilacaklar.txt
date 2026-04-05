@@ -1,0 +1,85 @@
+29/08/2025
+
+1-)oturum açarken email sistematiğinin geliştirilmesi ----
+2-)il ilçe tablolarının enjekte edilmesi ++++
+3-)Admin panel dinamik hale getirilecek db bağlantısı gerçekleşeck ----
+4-) veritabanındaki foreign key aksiyon tipleri araştırılacak ++++
+
+5-)Microsoft ıdentity server kurulacak token bazlı tutlacak ----
+6_) razor pages +++---
+7-) db diyagramı çıkartılacak her gelimndiğinde db de update var ise diyagram güncellenecek +++
+
+12-09-2025
+
+1-) kullanıcı kayıt olurken şifre sıfırlamadaki gibi onay mail i gönderilecek onay mailindeki linke bir kere tıklanılabilecek linke tıklamayan giriş yapamayacak ----
+
+
+19 eylül cuma 15.30
+
+
+1-) Email doğrulama linki tek sefer çalışacak ikinci tıklayışta onay vermeyecek(güvenlik açığı) +-
+
+2-) rollerin arayüz üzerinden yetki verilebilmeli ++
+
+3-) rol yetkileri kullanıcı yönetimi , kategori yönetimi , sipariş yönetimi , urun yönetimi , site yönetimi ++
+
+4-) textboxlarda hatalı veri girilmesinde ekrana gelen hata mesajı ++
+
+5-) zorunlu alanlara yıldız eklenmeli ++
+
+6-) fiyat alanlarında girilen negatif değerler ve 0 engellenmeli(sıfır yerine ücretsiz seçeneği koyulacak ücretsiz seçildiğinde fiyat alanı kapanacak) ++
+ 
+7-) database diagramı eklenecek foreign key , index ve prinmary keylerin üstünden geçilecek ++
+
+8-) description alanları kaydedilmemekte ++
+ 
+9-) URL de neler olmayabilir(sadece izin veirilen karakterler)/ URL alan tüm alanlarda ++
+
+10-) aynı isismde kategori URL i verilemez kontrol sistem kontrol edecek ++ 
+
+11-) 2FA(iki faktörlü doğrulama) entegrasyonu yapıldı ++ 
+
+12-) Favicon değişecek ++
+
+
+27.03.2026
+
+1-) URL de doğrulanmış linkle ilgili zaten doğrulanmışsa o şekilde yazılacak
+
+
+2-) yetkiler DB fonksiyonel olamlı (edit create ve delete gibi) ordan düzenlenmeli yeni yetki eklendiğinde kod üzerinde de değişiklik zaman kaybı olabilir
+
+
+3-) sepetten silme butonun buglı
+
+4-) kargo yönetimi fonksiyonu eklenecek  kargoların bölgesel fiyuatlandırma olacak ürün bazlı(desisine göre olacak) ürünlerde bu tanımlanacak fiyatlandırma olacak
+
+5-) sepet bakiyesine göre ücretsiz kargo seçeneği eklencek
+
+6-) kart numarası dörder haneli olacak ve visa troy kontrol olacak
+
+7-) checkout taki hata giderilecek
+
+8-) siparişlerim sayfasında accordion kaldırılacak list yapılacak ya da ajax ile (ödeme yapılan kredi kartı özet bilgileri 0olmalı)
+
+9-) adres yönetimi ve birden fazla adres ve varsayılan aderes seçilebilecek
+
+10-) ürün yönetimine stok bilgileri girilebilecek
+
+11-) admin sayfasındaki sipariş yönetimine süreçler eklenecek(Amazon örnek al) , stok , depo tedarik gibi
+
+
+12-) sipariş yönetimine kargo yönetimi onksiyonu eklenecek satıcı tarafı
+
+13-) sipariş yönetiminde sipariş state leri olacak
+
+14-) sipariş yönetimine filtrleme mekanizması eklenecek ürüne göre tairhie göre sipariş vere , mail göre pagination ile backend te yapılacak
+
+15-) birde iader süreci eklenmeli(ÖRNEK AL(Amazon))
+
+16-) git ile branch ve merge mantığı eklenecek 3 ortam olamlı product , develppemnt ve test
+
+
+
+
+

@@ -1,0 +1,42 @@
+5890040000000016
+
+Akbank
+
+Master Card 
+
+Banka Kartı (Debit)
+
+
+
+5526080000000006
+
+Akbank
+
+Master Card 
+
+Kredi Kartı (Credit)
+
+
+Yabancı kart : 
+
+5400010000000004
+
+
+
+çalıntı kart : 
+
+4126111111111114
+
+Stolen card
+
+
+
+yetersiz bakiye : 
+
+4111111111111129
+
+Not sufficient funds
+
+
+
+
