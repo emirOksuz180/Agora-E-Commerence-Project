@@ -1,0 +1,54 @@
+@model IEnumerable<object>
+@{
+    ViewData["Title"] = ViewBag.EntityName + " Listesi";
+    // İlk kayıttan kolon isimlerini (Property'leri) alıyoruz
+    var firstItem = Model.FirstOrDefault();
+    var properties = firstItem?.GetType().GetProperties();
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<div class="mb-3">
+    <a href="/Universal/Edit?entityName=@ViewBag.EntityName" class="btn btn-primary">Yeni Ekle</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            @if (properties != null)
+            {
+                foreach (var prop in properties)
+                {
+                    // Karmaşayı önlemek için sadece temel tipleri gösterelim
+                    if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(decimal))
+                    {
+                        <th>@prop.Name</th>
+                    }
+                }
+            }
+            <th>İşlemler</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                @foreach (var prop in properties!)
+                {
+                    if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(decimal))
+                    {
+                        <td>@prop.GetValue(item)</td>
+                    }
+                }
+                <td>
+                    @{
+                        var idValue = item.GetType().GetProperty("Id")?.GetValue(item) 
+                                     ?? item.GetType().GetProperty(ViewBag.EntityName + "Id")?.GetValue(item);
+                    }
+                    <a href="/Universal/Edit?entityName=@ViewBag.EntityName&id=@idValue" class="btn btn-sm btn-warning">Düzenle</a>
+                    <button onclick="deleteEntity('@ViewBag.EntityName', '@idValue')" class="btn btn-sm btn-danger">Sil</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

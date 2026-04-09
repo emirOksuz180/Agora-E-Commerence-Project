@@ -40,7 +40,7 @@ public class CartController : Controller
 
 
     [HttpPost]
-    public async Task<ActionResult> RemoveItem(int urunId , int miktar)
+    public async Task<ActionResult> RemoveItem(int urunId , int miktar=1)
     {
 
         await _cartService.RemoveItem(urunId , miktar);

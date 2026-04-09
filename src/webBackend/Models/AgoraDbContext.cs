@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace webBackend.Models;
 
@@ -18,9 +17,12 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
     {
     }
 
+    
+
+    public virtual DbSet<ActionPermission> ActionPermissions { get; set; }
+
     public virtual DbSet<AppPermission> AppPermissions { get; set; }
 
-    
 
     public virtual DbSet<Cart> Carts { get; set; }
 
@@ -36,7 +38,9 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
 
     public virtual DbSet<Product> Products { get; set; }
 
-    public virtual DbSet<Role> Roles { get; set; }
+   
+
+    public virtual DbSet<RoleActionPermission> RoleActionPermissions { get; set; }
 
     public virtual DbSet<Slider> Sliders { get; set; }
 
@@ -44,38 +48,40 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
 
     public virtual DbSet<TblIlce> TblIlces { get; set; }
 
-    public virtual DbSet<User> Users { get; set; }
+    
+
+    public virtual DbSet<UserActionPermission> UserActionPermissions { get; set; }
 
     public virtual DbSet<UserMessage> UserMessages { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            
-        }
-    }
 
-        
+        => optionsBuilder.UseSqlServer("Server=EMIR-HP\\MSSQLSERVER01;Database=AgoraDb;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+
         base.OnModelCreating(modelBuilder);
 
-
-        modelBuilder.Entity<AppUser>(entity =>
-        {
-            
-            entity.ToTable("AspNetUsers");
-
-            
-            entity.Property(e => e.TwoFactorEnabled)
-                .HasDefaultValueSql("((1))") 
-                .ValueGeneratedOnAdd();      
+        modelBuilder.Entity<IdentityUserLogin<int>>(entity => {
+        entity.ToTable("AspNetUserLogins"); 
+        entity.HasKey(l => new { l.LoginProvider, l.ProviderKey });
         });
 
 
+       
 
+        OnModelCreatingPartial(modelBuilder);
+
+        modelBuilder.Entity<ActionPermission>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__ActionPe__3214EC0736357F55");
+
+            entity.Property(e => e.ActionName).HasMaxLength(100);
+            entity.Property(e => e.Category).HasMaxLength(50);
+            entity.Property(e => e.ControllerName).HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(250);
+        });
 
         modelBuilder.Entity<AppPermission>(entity =>
         {
@@ -86,20 +92,7 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.Property(e => e.PermissionKey).HasMaxLength(100);
         });
 
-       
-
-        modelBuilder.Entity<CartItem>(entity =>
-        {
-            entity.ToTable("CartItem");
-
-            entity.HasIndex(e => e.CartId, "IX_CartItem_CartId");
-
-            entity.HasIndex(e => e.UrunId, "IX_CartItem_UrunId");
-
-            entity.HasOne(d => d.Cart).WithMany(p => p.CartItems).HasForeignKey(d => d.CartId);
-
-            entity.HasOne(d => d.Urun).WithMany(p => p.CartItems).HasForeignKey(d => d.UrunId);
-        });
+        
 
         modelBuilder.Entity<Category>(entity =>
         {
@@ -136,16 +129,29 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK__Comments__UserID__59063A47");
         });
+        
+        modelBuilder.Entity<Cart>(entity =>
+        {
+            entity.ToTable("Carts"); // "Invalid object name 'Cart'" hatasını bu satır çözer
+            entity.HasKey(e => e.CartId);
+        });
+
+        // 2. CartItem Tablosu (Senin DB'de tekil)
+        modelBuilder.Entity<CartItem>(entity =>
+        {
+            entity.ToTable("CartItem"); // Eğer bu da 's' ile bitseydi "CartItems" yapardık
+            entity.HasKey(e => e.CartItemId);
+            
+            // İlişkiyi de garantiye alalım
+            entity.HasOne(d => d.Cart)
+                .WithMany(p => p.CartItems)
+                .HasForeignKey(d => d.CartId);
+        });
 
         modelBuilder.Entity<Order>(entity =>
         {
             entity.Property(e => e.AdSoyad).HasDefaultValue("");
             entity.Property(e => e.Email).HasMaxLength(256);
-            entity.Property(e => e.ToplamFiyat)
-          .HasColumnType("decimal(18, 2)") 
-          .HasColumnType("float") 
-          .IsRequired()
-          .ValueGeneratedNever();
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
@@ -155,12 +161,6 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.HasIndex(e => e.OrderId, "IX_OrderItem_OrderId");
 
             entity.HasIndex(e => e.UrunId, "IX_OrderItem_UrunId");
-
-                entity.Property(e => e.Fiyat)
-            .HasColumnType("decimal(18, 2)")
-            .HasColumnType("float") 
-          .IsRequired()
-          .HasDefaultValue(0);
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderItems).HasForeignKey(d => d.OrderId);
 
@@ -176,26 +176,43 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("((1))")
                 .HasColumnType("datetime");
+            entity.Property(e => e.Desi)
+                .HasComputedColumnSql("(case when [Width] IS NULL OR [Height] IS NULL OR [Length] IS NULL then (1) else case when ceiling((([Width]*[Height])*[Length])/(3000.0))<(1) then (1) else ceiling((([Width]*[Height])*[Length])/(3000.0)) end end)", true)
+                .HasColumnType("numeric(38, 0)");
+            entity.Property(e => e.Height).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.ImageUrl).HasMaxLength(255);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.Price).HasColumnType("decimal(18, 2)")
-            .HasDefaultValue(0.00m);
+            entity.Property(e => e.IsPhysical).HasDefaultValue(true);
+            entity.Property(e => e.Length).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ProductDescription).HasMaxLength(500);
             entity.Property(e => e.ProductName).HasMaxLength(100);
+            entity.Property(e => e.Weight).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.Width).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.Desi)
+            .HasComputedColumnSql("(case when [Width] IS NULL OR [Height] IS NULL OR [Length] IS NULL then (1) else case when ceiling((([Width]*[Height])*[Length])/(3000.0))<(1) then (1) else ceiling((([Width]*[Height])*[Length])/(3000.0)) end end)", true)
+            .ValueGeneratedOnAddOrUpdate();
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
                 .HasConstraintName("FK_Products_Categories");
         });
 
-        modelBuilder.Entity<Role>(entity =>
+        
+
+        modelBuilder.Entity<RoleActionPermission>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE1A9EB383DA");
+            entity.HasKey(e => e.Id).HasName("PK__RoleActi__3214EC07876D2999");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Roles__8A2B616020D5D698").IsUnique();
+            entity.HasIndex(e => new { e.RoleId, e.PermissionId }, "IX_RolePermission_Unique").IsUnique();
 
-            entity.Property(e => e.RoleId).ValueGeneratedNever();
-            entity.Property(e => e.RoleName).HasMaxLength(50);
+            entity.HasOne(d => d.Permission).WithMany(p => p.RoleActionPermissions)
+                .HasForeignKey(d => d.PermissionId)
+                .HasConstraintName("FK_RoleActionPermissions_Permissions");
+
+            entity.HasOne(d => d.Role).WithMany(p => p.RoleActionPermissions)
+                .HasForeignKey(d => d.RoleId)
+                .HasConstraintName("FK_RoleActionPermissions_Roles");
         });
 
         modelBuilder.Entity<Slider>(entity =>
@@ -243,23 +260,23 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
                 .HasConstraintName("FK__tbl_ilce__ilId__72C60C4A");
         });
 
-        modelBuilder.Entity<User>(entity =>
+        
+
+        modelBuilder.Entity<UserActionPermission>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C1B28AE64");
+            entity.HasKey(e => e.Id).HasName("PK__UserActi__3214EC07641F3BAB");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Users__8A2B616056E220D8").IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.PermissionId }, "IX_UserPermission_Unique").IsUnique();
 
-            entity.HasIndex(e => e.Email, "UQ__Users__A9D105348372B5B5").IsUnique();
+            entity.Property(e => e.IsAllowed).HasDefaultValue(true);
 
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.Email).HasMaxLength(100);
-            entity.Property(e => e.FirstName).HasMaxLength(50);
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.LastName).HasMaxLength(50);
-            entity.Property(e => e.RoleName).HasMaxLength(50);
-            entity.Property(e => e.UserName).HasMaxLength(50);
+            entity.HasOne(d => d.Permission).WithMany(p => p.UserActionPermissions)
+                .HasForeignKey(d => d.PermissionId)
+                .HasConstraintName("FK_UserActionPermissions_Permissions");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserActionPermissions)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_UserActionPermissions_Users");
         });
 
         modelBuilder.Entity<UserMessage>(entity =>
@@ -276,8 +293,6 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.Property(e => e.FullName).HasMaxLength(100);
             entity.Property(e => e.MessageSubject).HasMaxLength(200);
         });
-
-        
 
         OnModelCreatingPartial(modelBuilder);
     }

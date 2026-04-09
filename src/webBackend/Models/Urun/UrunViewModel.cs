@@ -39,6 +39,17 @@ namespace webBackend.Models
         [Display(Name = "Kategori *")]
         public int CategoryId { get; set; }
         
-        public string? CategoryName { get; set; } 
+        public string? CategoryName { get; set; }
+
+        
+        public decimal? Weight { get; set; }
+        public decimal? Width { get; set; }
+        public decimal? Height { get; set; }
+        public decimal? Length { get; set; } 
+
+        public decimal Desi { get; set; }
+
+        public bool? IsPhysical { get; set; }
+        public int Stock { get; set; }
     }
 }

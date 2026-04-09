@@ -1,0 +1,48 @@
+@model object
+@{
+    ViewData["Title"] = ViewBag.EntityName + " Düzenle";
+    var properties = Model.GetType().GetProperties();
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form action="/Universal/Edit?entityName=@ViewBag.EntityName" method="post">
+    @Html.AntiForgeryToken()
+
+    @foreach (var prop in properties)
+    {
+        var val = prop.GetValue(Model);
+        
+        // ID kolonu gizli kalsın
+        if (prop.Name.ToLower().Contains("id") && !prop.Name.ToLower().EndsWith("id")) 
+        {
+             <input type="hidden" name="@prop.Name" value="@val" />
+             continue;
+        }
+
+        <div class="form-group mb-3">
+            <label>@prop.Name</label>
+            
+            @if (prop.PropertyType == typeof(bool))
+            {
+                <input type="checkbox" name="@prop.Name" @(val != null && (bool)val ? "checked" : "") value="true" />
+            }
+            else if (prop.Name.EndsWith("Id") && ViewBag.Lookups.ContainsKey(prop.Name.Replace("Id", "List")))
+            {
+                <select name="@prop.Name" class="form-control">
+                    @foreach (var item in (IEnumerable<dynamic>)ViewBag.Lookups[prop.Name.Replace("Id", "List")])
+                    {
+                        <option value="@item.Id" selected="@(item.Id.ToString() == val?.ToString())">@item.Name</option>
+                    }
+                </select>
+            }
+            else
+            {
+                <input type="text" name="@prop.Name" value="@val" class="form-control" />
+            }
+        </div>
+    }
+
+    <button type="submit" class="btn btn-success">Kaydet</button>
+    <a href="/Universal/List?entityName=@ViewBag.EntityName" class="btn btn-secondary">İptal</a>
+</form>

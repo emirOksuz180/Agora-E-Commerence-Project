@@ -223,7 +223,7 @@ public async Task<IActionResult> Edit(int id, RolePermissionViewModel model)
       RedirectToAction("Index");
     }
 
-    var entity = await _rolemanager.FindByIdAsync(id);
+    var entity = await _rolemanager.FindByIdAsync(id!);
 
     if(entity != null)
     {

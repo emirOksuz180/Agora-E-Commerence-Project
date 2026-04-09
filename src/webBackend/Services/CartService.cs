@@ -9,6 +9,7 @@ public interface ICartService
   Task AddToCart(int urunId , int miktar = 1);
   Task RemoveItem(int urunId , int miktar = 1);
   Task TransferCartToUser(string username);
+  Task ClearCart();
 }
 
 public class CartService : ICartService
@@ -38,6 +39,27 @@ public class CartService : ICartService
 
             await _context.SaveChangesAsync();
         }
+  }
+
+  public async Task ClearCart()
+  {
+      var customerId = GetCustomerId();
+      // 1. Kullanıcının sepetini ve içindeki ürünleri (CartItems) çekiyoruz
+      var cart = await _context.Carts
+                              .Include(i => i.CartItems)
+                              .FirstOrDefaultAsync(i => i.CustomerId == customerId);
+
+      if (cart != null)
+      {
+          // 2. Sepet içindeki kalemleri temizliyoruz
+          _context.CartItems.RemoveRange(cart.CartItems);
+          
+          // 3. İstersen sepetin kendisini de silebilirsin (veya sadece kalemleri)
+          _context.Carts.Remove(cart);
+
+          await _context.SaveChangesAsync();
+      }
+    
   }
 
   public async Task<Cart> GetCart(string custId)

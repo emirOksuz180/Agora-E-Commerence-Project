@@ -8,6 +8,7 @@ using Iyzipay.Model;
 using Iyzipay;
 using Iyzipay.Request;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using OrderItem = webBackend.Models.OrderItem;
 
 namespace webBackend.Controllers;
 
@@ -63,8 +64,8 @@ public class OrderController : Controller
         var cart = await _cartService.GetCart(username);
         ViewBag.Cart = cart;
         
-        var iller = _context.TblIls.OrderBy(x => x.IlAdi).ToList();
-        ViewBag.Iller = new SelectList(iller, "IlAdi", "IlAdi");
+        var iller = await _context.TblIls.ToListAsync();
+        ViewBag.Iller = new SelectList(iller, "Id", "IlAdi");
 
         
 
@@ -95,7 +96,7 @@ public class OrderController : Controller
             SiparisNotu = model.SiparisNotu ?? "",
             SiparisTarihi = DateTime.Now,
             // Önemli: Önce cart üzerinden hesaplıyoruz
-            ToplamFiyat = cart.Toplam(), 
+            ToplamFiyat = cart.Toplam, 
             Username = username,
             OrderItems = cart.CartItems.Select(ci => new webBackend.Models.OrderItem
             {
@@ -121,9 +122,8 @@ public class OrderController : Controller
 
         if (ModelState.IsValid)
         {
-            // SQL Hatasını Bitiren Dokunuş: Model içindeki hesaplamayı tetikle
-            // Bu metot ToplamFiyat property'sini içeriden doldurur.
-            order.Toplam(); 
+            
+            order.ToplamFiyat = order.Toplam; 
 
             ProcessPaymentResult payment;
             if (order.ToplamFiyat == 0)
@@ -138,7 +138,7 @@ public class OrderController : Controller
             if (payment.Status == "success")
             {
 
-                order.ToplamFiyat = (double)cart.Toplam(); 
+                order.ToplamFiyat = (double)cart.Toplam; 
 
                 _context.Orders.Add(order);
                 
@@ -147,6 +147,22 @@ public class OrderController : Controller
 
                 await _context.SaveChangesAsync();
                 
+                foreach (var item in cart.CartItems)
+                {
+                    var orderItem = new OrderItem
+                    {
+                        OrderId = order.Id, 
+                        UrunId = item.UrunId,
+                        Miktar = item.Miktar,
+                        Fiyat = (double)item.Urun.Price 
+                    };
+                    _context.OrderItems.Add(orderItem);
+                }
+
+                await _context.SaveChangesAsync();
+
+                // 4. Sepeti Temizle (Kritik: Adam ödedi, sepet boşalmalı)
+                await _cartService.ClearCart();
                 
 
               
@@ -220,8 +236,8 @@ public class OrderController : Controller
         {
             Locale = Locale.TR.ToString(),
             ConversationId = Guid.NewGuid().ToString(),
-            Price = cart.araToplam().ToString("F2").Replace(",", "."),
-            PaidPrice = cart.araToplam().ToString("F2").Replace(",", "."),
+            Price = cart.araToplam.ToString("F2").Replace(",", "."),
+            PaidPrice = cart.araToplam.ToString("F2").Replace(",", "."),
             Currency = Currency.TRY.ToString(),
             Installment = 1,
             BasketId = "B" + Guid.NewGuid().ToString().Substring(0, 5),
@@ -287,11 +303,15 @@ public class OrderController : Controller
 
 internal class ProcessPaymentResult
 {
-  public string Status { get; internal set; }
+  public string ?Status { get; internal set; }
   public string? ErrorMessage { get; internal set; }
 
   public static implicit operator ProcessPaymentResult(Payment v)
   {
-    throw new NotImplementedException();
+        return new ProcessPaymentResult
+        {
+            // IsSuccess yerine Status kontrolü yapıyoruz
+            Status = v.Status == "success" ? "success" : "failed"
+        };
   }
 }

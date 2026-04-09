@@ -18,6 +18,9 @@ builder.Services.AddTransient<ICartService, CartService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddHttpContextAccessor(); // URL yakalamak için
+builder.Services.AddScoped<DynamicEntityManager>();
+builder.Services.AddScoped<ActionPermissionService>(); 
 
 //  Veritabanı Yapılandırması 
 builder.Services.AddDbContext<AgoraDbContext>(options =>

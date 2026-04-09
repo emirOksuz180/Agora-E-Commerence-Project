@@ -42,8 +42,16 @@ namespace webBackend.Controllers
             AnaSayfa = i.AnaSayfa,
             CategoryId = i.CategoryId, 
             CategoryName = i.Category.Name, 
-            ImageUrl = i.ImageUrl 
-        }).ToListAsync();
+            ImageUrl = i.ImageUrl,
+            Weight = i.Weight,
+            Width = i.Width,
+            Height = i.Height,
+            Length = i.Length,
+            Desi = (decimal)i.Desi, 
+            
+            IsPhysical = i.IsPhysical ?? true,
+            Stock = i.Stock 
+        }).AsNoTracking().ToListAsync();
 
         ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", kategori);
 
@@ -99,7 +107,7 @@ namespace webBackend.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(UrunViewModel model)
         {
-            
+            // Resim kontrolü
             if (model.ImageFile == null || model.ImageFile.Length == 0)
             {
                 ModelState.AddModelError("ImageFile", "Lütfen bir ürün resmi seçiniz.");
@@ -121,7 +129,7 @@ namespace webBackend.Controllers
                     }
                 }
 
-                
+                // Yeni alanlarla beraber Product nesnesini oluşturuyoruz
                 var entity = new Product() 
                 {
                     ProductName = model.ProductName,
@@ -130,15 +138,28 @@ namespace webBackend.Controllers
                     IsActive = model.IsActive,
                     AnaSayfa = model.AnaSayfa,
                     CategoryId = model.CategoryId,
-                    ImageUrl = "/img/" + fileName
+                    ImageUrl = "/img/" + fileName,
+                    
+                    // Lojistik Alanları Entegrasyonu
+                    Weight = model.Weight,
+                    Width = model.Width,
+                    Height = model.Height,
+                    Length = model.Length,
+                    IsPhysical = model.IsPhysical ?? true, // Null gelirse varsayılan olarak fiziksel üründür
+                    Stock = model.Stock // Unutma, SQL dökümünde Stock alanı "NOT NULL" görünüyordu
                 };
 
                 _context.Products.Add(entity);
                 await _context.SaveChangesAsync();
 
+                // KRİTİK DOKUNUŞ: SQL'in hesapladığı Desi'yi nesneye geri yükler
+                await _context.Entry(entity).ReloadAsync();
+
+                // Eğer kayıttan sonra desiyi görmek istersen: entity.Desi artık dolu.
                 return RedirectToAction("Index");
             }
 
+            // Hata durumunda kategorileri tekrar yükle
             ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name");
             return View(model);
         }
@@ -158,7 +179,12 @@ namespace webBackend.Controllers
                     AnaSayfa = i.AnaSayfa,
                     Price = i.Price.ToString("F2", new System.Globalization.CultureInfo("tr-TR")),
                     CategoryId = i.CategoryId,
-                    ImageUrl = i.ImageUrl
+                    ImageUrl = i.ImageUrl,
+                    Weight = i.Weight,
+                    Width = i.Width,
+                    Height = i.Height,
+                    Length = i.Length,
+                    Desi = (int)i.Desi!
                 }).FirstOrDefaultAsync(i => i.ProductId == id);
 
             if (entity == null)

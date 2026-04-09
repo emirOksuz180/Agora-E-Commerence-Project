@@ -1,42 +1,47 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace webBackend.Models;
 
 public partial class Product
 {
-    [Key]
     public int ProductId { get; set; }
 
-    [Required]
-    [StringLength(100)]
     public string ProductName { get; set; } = null!;
 
-   
     public string? ProductDescription { get; set; }
 
-    [Column(TypeName = "decimal(18, 2)")]
     public decimal Price { get; set; }
 
     public int Stock { get; set; }
 
     public int CategoryId { get; set; }
 
-    [StringLength(255)]
     public string? ImageUrl { get; set; }
 
     public bool IsActive { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; }
 
-    public bool AnaSayfa { get; set; }
+    public bool AnaSayfa { get; set; } = false;
 
-    
+    public decimal? Weight { get; set; }
+
+    public decimal? Width { get; set; }
+
+    public decimal? Height { get; set; }
+
+    public decimal? Length { get; set; }
+
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal? Desi { get; set; }
+
+    public bool? IsPhysical { get; set; }
+
     public virtual ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
 
-    [ForeignKey("CategoryId")]
     public virtual Category Category { get; set; } = null!;
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
