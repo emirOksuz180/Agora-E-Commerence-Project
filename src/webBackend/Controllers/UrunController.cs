@@ -47,7 +47,7 @@ namespace webBackend.Controllers
             Width = i.Width,
             Height = i.Height,
             Length = i.Length,
-            Desi = (decimal)i.Desi, 
+            Desi = (decimal)i.Desi!, 
             
             IsPhysical = i.IsPhysical ?? true,
             Stock = i.Stock 
@@ -107,6 +107,7 @@ namespace webBackend.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(UrunViewModel model)
         {
+            
             // Resim kontrolü
             if (model.ImageFile == null || model.ImageFile.Length == 0)
             {

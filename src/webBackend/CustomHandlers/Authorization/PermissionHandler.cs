@@ -52,9 +52,10 @@ public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
         if (actionPermissionId.HasValue)
         {
             // A. Kullanıcının Rollerinden gelen yetkiyi kontrol et
-            var userRoleIds = await _context.Users
-                .Where(ur => ur.Id == userId)
-                .Select(ur => ur.Id)
+            // FIX: ur.Id olan yer ur.UserId yapıldı ve doğru tablo (UserRoles) kullanıldı
+            var userRoleIds = await _context.UserRoles
+                .Where(ur => ur.UserId == userId)
+                .Select(ur => ur.RoleId)
                 .ToListAsync();
 
             var hasRolePermission = await _context.RoleActionPermissions
@@ -79,13 +80,12 @@ public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
                 return;
             }
             
-            // Eğer URL kilitliyse (ActionPermissions'ta varsa) ve ne rolde ne kullanıcıda izin yoksa: ZINKKK! 
+            // Eğer URL kilitliyse ve izin yoksa:
             context.Fail(); 
             return;
         }
 
-        // 3. Klasik Yetki Sistemi (Geriye Dönük Uyumluluk)
-        // URL bazlı kısıtlama yoksa, manuel yazılmış [Authorize(Policy = "X")] kontrollerine bakar.
+        // 3. Klasik Yetki Sistemi
         string cacheKey = $"User_Permissions_{userId}";
         if (!_cache.TryGetValue(cacheKey, out List<string>? userPermissions))
         {

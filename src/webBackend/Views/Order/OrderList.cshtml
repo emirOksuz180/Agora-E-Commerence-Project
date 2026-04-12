@@ -5,12 +5,8 @@
         <div class="container">
             <nav>
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item">
-                        <a href="#">Anasayfa</a>
-                    </li>
-                    <li class="breadcrumb-item">
-                        Siparişler
-                    </li>
+                    <li class="breadcrumb-item"><a href="/" class="text-white">Anasayfa</a></li>
+                    <li class="breadcrumb-item text-white-50">Siparişlerim</li>
                 </ol>
             </nav>
         </div>
@@ -20,86 +16,146 @@
 <section class="mt-3">
     <div class="container">
         <div class="row">
+            @* SOL TARAF: SIDEBAR *@
             <div class="col-md-3">
-                @await Html.PartialAsync("Partials/Site/_AccountSideBar")
+                <div class="list-group mb-3 shadow-sm">
+                    @await Html.PartialAsync("Partials/Site/_AccountSideBar")
+                </div>
             </div>
-            <div class="col-9">
-                <div class="card shadow">
-                    <div class="card-header py-1">
-                        <h5 class="card-title mb-0">Siparişler</h5>
-                    </div>
-                    <div class="card-body">
-                        @if (Model.Count == 0)
-                        {
-                            <div class="alert alert-warning">Siparişiniz yok.</div>
-                        }
-                        <div class="accordion" id="orders">
-                            @foreach (var order in Model)
-                            {
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                                            data-bs-target="#order_@order.Id">
-                                            Sipariş No: #@order.Id
-                                        </button>
-                                    </h2>
-                                    <div id="order_@order.Id" class="accordion-collapse collapse p-3"
-                                        data-bs-parent="#orders">
-                                        <table class="table table-bordered mb-0">
-                                            <tr>
-                                                <td colspan="2">
-                                                    Teslim Tarihi
-                                                </td>
-                                                <td colspan="3">
-                                                    @order.SiparisTarihi
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="2">
-                                                    Ad Soyad
-                                                </td>
-                                                <td colspan="3">
-                                                    @order.AdSoyad
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="2">
-                                                    Teslimat Adresi
-                                                </td>
-                                                <td colspan="3">
-                                                    @order.AdresSatiri / @order.Sehir / @order.PostaKodu / @order.Telefon
-                                                </td>
-                                            </tr>
-                                            @foreach (var item in order.OrderItems)
-                                            {
-                                                <tr>
-                                                    <td style="width: 80px;">
-                                                        <img src="@item.Urun.ImageUrl" class="img-fluid" alt="">
-                                                    </td>
-                                                    <td>@item.Urun.ProductName</td>
-                                                    <td>@item.Fiyat ₺</td>
-                                                    <td>@item.Miktar <span>adet</span></td>
-                                                    <td>@(item.Fiyat* item.Miktar) ₺</td>
-                                                </tr>
-                                            }
-                                            <tr>
-                                                <td colspan="3"></td>
-                                                <td>Ara Toplam</td>
-                                                <td>@order.AraToplam ₺</td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="3"></td>
-                                                <td>Toplam</td>
-                                                <td>@order.Toplam ₺</td>
-                                            </tr>
-                                        </table>
-                                    </div>
+
+            @* SAĞ TARAF: SİPARİŞ İÇERİĞİ *@
+            <div class="col-md-9">
+                @* TARİH FİLTRELEME ALANI *@
+                <div class="card shadow-sm border-0 mb-3 bg-light">
+                    <div class="card-body p-3">
+                        <form method="get" class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Başlangıç</label>
+                                <input type="date" name="startDate" class="form-control form-control-sm" value="@Context.Request.Query["startDate"]">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Bitiş</label>
+                                <input type="date" name="endDate" class="form-control form-control-sm" value="@Context.Request.Query["endDate"]">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Filtrele</button>
+                                    <a href="@Url.Action("OrderList")" class="btn btn-outline-secondary btn-sm" title="Temizle"><i class="fa-solid fa-rotate-left"></i></a>
                                 </div>
-                            }
-                        </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 fw-bold text-dark">Siparişlerim</h5>
+                        <span class="badge bg-soft-primary text-primary">@Model?.Count Sipariş</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (Model == null || !Model.Any())
+                        {
+                            <div class="text-center py-5">
+                                <i class="fa-solid fa-receipt fa-3x text-muted opacity-25 mb-3"></i>
+                                <p class="text-muted">Aranan kriterlere uygun sipariş bulunamadı.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var order in Model)
+                                {
+                                    <div class="list-group-item py-4 order-row">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-7">
+                                                <div class="d-flex align-items-center mb-1">
+                                                    <span class="fw-bold text-primary fs-5">#@order.Id</span>
+                                                    <span class="mx-2 text-muted">|</span>
+                                                    <span class="small text-muted">@order.SiparisTarihi.ToString("dd MMMM yyyy HH:mm")</span>
+                                                </div>
+                                                <div class="text-dark small fw-semibold mb-1">
+                                                    <i class="fa-solid fa-box text-secondary me-1"></i>
+                                                    @if (order.OrderItems != null && order.OrderItems.Any())
+                                                    {
+                                                        @string.Join(", ", order.OrderItems.Take(2).Select(i => i.Urun?.ProductName ?? "Ürün"))
+                                                        @if (order.OrderItems.Count > 2)
+                                                        {
+                                                            <span class="text-muted fw-normal"> (+@(order.OrderItems.Count - 2) ürün daha)</span>
+                                                        }
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 text-md-center">
+                                                <span class="fw-bold fs-5 text-dark">@order.Toplam.ToString("N2") ₺</span>
+                                            </div>
+                                            <div class="col-md-2 text-end">
+                                                @* Veri ID'sini burada tutuyoruz *@
+                                                <button class="btn btn-sm btn-outline-primary border btn-detail px-3 rounded-pill" data-order-id="@order.Id">
+                                                    İncele <i class="fa-solid fa-chevron-down ms-1"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        @* AJAX Detay Alanı - ID çakışmaması için prefix ekledik *@
+                                        <div class="detail-container mt-3 p-3 bg-white border rounded shadow-sm" id="order-detail-@order.Id" style="display: none;">
+                                            <div class="text-center py-2 spinner-area">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                                <span class="ms-2 small text-muted">Yükleniyor...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // "İncele" butonuna tıklandığında
+            $(document).on('click', '.btn-detail', function (e) {
+                e.preventDefault();
+                
+                // Tıklanan butondan ID'yi al
+                var orderId = $(this).attr('data-order-id'); 
+                var detailArea = $('#order-detail-' + orderId);
+                var btn = $(this);
+                var icon = btn.find('i');
+
+                // Eğer zaten açıksa kapat
+                if (detailArea.is(':visible')) {
+                    detailArea.slideUp(300);
+                    icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                    return;
+                }
+
+                // Eğer içi boşsa veya sadece spinner varsa yükle
+                if (detailArea.find('.spinner-area').length > 0 || detailArea.is(':empty')) {
+                    
+                    // AJAX İsteği
+                    $.ajax({
+                        url: '/Order/Details',
+                        type: 'GET',
+                        data: { id: orderId },
+                        success: function (response) {
+                            detailArea.html(response);
+                        },
+                        error: function (xhr) {
+                            console.log("Hata detayı:", xhr.responseText);
+                            detailArea.html('<div class="alert alert-danger mb-0 small">Bilgiler yüklenemedi.</div>');
+                        }
+                    });
+                }
+
+                // Alanı aç ve ikonu değiştir
+                detailArea.slideDown(300);
+                icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+            });
+        });
+    </script>
+}

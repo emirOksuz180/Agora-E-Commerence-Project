@@ -10,9 +10,16 @@
     </div>
 
     <div class="border-top info-wrap p-3">
-        <a href="#" class="float-end btn btn-light btn-sm">
-            <i class="fa-regular fa-heart"></i>
-        </a>
+        @* FAVORİ BUTONU BURADA BAŞLIYOR *@
+        <div class="float-end">
+            <button type="button" 
+                    class="btn btn-light btn-sm border-0 fav-button" 
+                    data-product-id="@Model.ProductId">
+                <i class="fa-regular fa-heart text-danger fs-5"></i>
+            </button>
+        </div>
+        @* FAVORİ BUTONU BURADA BİTTİ *@
+
         <a asp-controller="Urun" asp-action="Details" asp-route-id="@Model.ProductId"
            class="title text-truncate d-block mb-2 fw-bold text-decoration-none text-dark">
             @Model.ProductName

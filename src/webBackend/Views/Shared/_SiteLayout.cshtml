@@ -311,6 +311,43 @@
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
     <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
 
+
+    <script>
+      $(document).on('click', '.fav-button', function (e) {
+          e.preventDefault();
+          var btn = $(this);
+          var productId = btn.data('product-id');
+          var icon = btn.find('i');
+
+          // Sayfadaki Antiforgery Token'ı buluyoruz
+          var token = $('input[name="__RequestVerificationToken"]').val();
+
+          $.ajax({
+              url: '/Favorite/ToggleFavorite',
+              type: 'POST',
+              data: { 
+                  productId: productId, 
+                  __RequestVerificationToken: token // Güvenlik anahtarını buraya ekledik
+              },
+              success: function () {
+                  if (icon.hasClass('fa-regular')) {
+                      icon.removeClass('fa-regular').addClass('fa-solid animate__animated animate__heartBeat');
+                  } else {
+                      icon.removeClass('fa-solid animate__animated animate__heartBeat').addClass('fa-regular');
+                  }
+              },
+              error: function (xhr) {
+                  if (xhr.status === 401) {
+                      window.location.href = '/Account/Login';
+                  } else {
+                      console.log(xhr.responseText);
+                      alert("Hata oluştu! Konsolu kontrol et kanka.");
+                  }
+              }
+          });
+      });
+    </script>
+
     @RenderSection("Scripts", required: false)
 
   </body>

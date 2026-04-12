@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace webBackend.Models;
 
+[Table("OrderItem")]
 public partial class OrderItem
 {
     public int Id { get; set; }

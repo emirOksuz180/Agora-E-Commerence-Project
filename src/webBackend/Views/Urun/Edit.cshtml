@@ -135,4 +135,20 @@
     </script>
 
 
+    <script>
+
+        $(document).ready(function() {
+            $("#Width, #Height, #Length").on("input", function() {
+                let w = parseFloat($("#Width").val()) || 0;
+                let h = parseFloat($("#Height").val()) || 0;
+                let l = parseFloat($("#Length").val()) || 0;
+                
+                // Desi Formülü: (En * Boy * Yükseklik) / 3000
+                let desi = (w * h * l) / 3000;
+                $("#Desi").val(desi.toFixed(2));
+            });
+        });
+    </script>
+
+
 }

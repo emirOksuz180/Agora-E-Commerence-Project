@@ -1,0 +1,214 @@
+@model IEnumerable<webBackend.Models.UserAddress>
+
+@section Bar {
+    <section class="bg-primary p-3">
+        <div class="container">
+            <nav>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="/" class="text-white">Anasayfa</a>
+                    </li>
+                    <li class="breadcrumb-item text-white-50">Adres Bilgileri</li>
+                </ol>
+            </nav>
+        </div>
+    </section>
+}
+
+<section class="mt-3">
+    <div class="container">
+        <div class="row">
+            @* SIDEBAR *@
+            <div class="col-md-3">
+                <div class="list-group mb-3 shadow-sm">
+                    @await Html.PartialAsync("Partials/Site/_AccountSideBar")
+                </div>
+            </div>
+
+            @* ADRES LİSTESİ *@
+            <div class="col-md-9">
+                <div class="card shadow border-0">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white border-bottom">
+                        <h5 class="card-title mb-0 fw-bold text-dark">Adres Bilgilerim</h5>
+                        <button class="btn btn-sm btn-primary px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">
+                            <i class="fa fa-plus me-1"></i> Yeni Adres Ekle
+                        </button>
+                    </div>
+                    <div class="card-body bg-light p-4">
+                        <div class="row">
+                            @if (Model != null && Model.Any())
+                            {
+                                foreach (var item in Model)
+                                {
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-0 shadow-sm rounded-3">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <h6 class="fw-bold text-primary mb-0">
+                                                        <i class="fa-solid fa-map-pin me-2"></i>@item.AddressTitle
+                                                    </h6>
+                                                    @if (item.IsDefault)
+                                                    {
+                                                        <span class="badge bg-success-soft text-success border border-success small" style="background-color: #e8f5e9;">Varsayılan</span>
+                                                    }
+                                                </div>
+                                                <p class="small mb-1 fw-bold text-dark">@item.FirstName @item.LastName</p>
+                                                
+                                                @* --- ADRES DETAYI BURADA --- *@
+                                                <p class="small text-muted mb-1">@item.AddressDetail</p>
+                                                
+                                                <p class="small text-muted mb-3">
+                                                    <span class="text-dark fw-semibold">@item.District / @item.City</span>
+                                                </p>
+                                                <div class="d-flex justify-content-end gap-2 border-top pt-2">
+                                                    <form asp-action="Delete" asp-controller="Address" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Adresi silmek istediğinize emin misiniz?')">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Sil"><i class="fa-solid fa-trash-can"></i></button>
+                                                    </form>
+                                                    <button class="btn btn-sm btn-outline-primary border-0 edit-button" 
+                                                            data-id="@item.Id" 
+                                                            title="Düzenle">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="col-12 text-center py-5">
+                                    <div class="mb-3 text-muted opacity-50">
+                                        <i class="fa-solid fa-map-location-dot fa-4x"></i>
+                                    </div>
+                                    <h6 class="text-muted">Henüz kayıtlı bir adresiniz yok.</h6>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* --- MODAL --- *@
+<div class="modal fade" id="addAddressModal" tabindex="-1" aria-labelledby="addAddressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <form asp-action="Create" asp-controller="Address" method="post">
+                <div class="modal-header bg-primary text-white py-3">
+                    <h5 class="modal-title fw-bold" id="addAddressModalLabel">Yeni Adres Bilgisi</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-secondary">Adres Başlığı</label>
+                            <input type="text" name="AddressTitle" class="form-control" placeholder="Ev, İş vb." required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">Ad</label>
+                            <input type="text" name="FirstName" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">Soyad</label>
+                            <input type="text" name="LastName" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">Şehir</label>
+                            <input type="text" name="City" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">İlçe</label>
+                            <input type="text" name="District" class="form-control" required>
+                        </div>
+                        
+                        @* --- ADRES DETAYI INPUTU BURADA --- *@
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-secondary">Tam Adres (Mahalle, Sokak, No)</label>
+                            <textarea name="AddressDetail" class="form-control" rows="3" placeholder="Açık adresinizi buraya yazın..." required></textarea>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-secondary">Telefon</label>
+                            <input type="text" name="Phone" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="IsDefault" value="true" id="isDefaultCheck">
+                                <label class="form-check-label small fw-semibold" for="isDefaultCheck">Varsayılan yap</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-3">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none btn-sm" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">Adresi Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).on("click", ".edit-button", function () {
+        var id = $(this).data("id");
+        $.get("/Address/Edit/" + id, function (data) {
+            // Modal içindeki formun action'ını Edit'e çeviriyoruz
+            var form = $("#addAddressModal form");
+            form.attr("action", "/Address/Edit");
+            
+            // Gizli ID alanını ekle (Yoksa ekle, varsa güncelle)
+            if(form.find('input[name="Id"]').length == 0){
+                form.append('<input type="hidden" name="Id" value="' + data.id + '">');
+            } else {
+                form.find('input[name="Id"]').val(data.id);
+            }
+
+            // Form alanlarını doldur
+            form.find('input[name="AddressTitle"]').val(data.addressTitle);
+            form.find('input[name="FirstName"]').val(data.firstName);
+            form.find('input[name="LastName"]').val(data.lastName);
+            form.find('input[name="City"]').val(data.city);
+            form.find('input[name="District"]').val(data.district);
+            form.find('textarea[name="AddressDetail"]').val(data.addressDetail);
+            form.find('input[name="Phone"]').val(data.phone);
+            form.find('input[name="IsDefault"]').prop('checked', data.isDefault);
+
+            // Başlığı değiştir ve modalı aç
+            $("#addAddressModalLabel").text("Adresi Düzenle");
+            $("#addAddressModal").modal("show");
+        });
+    });
+
+    // Modal kapandığında formu sıfırla (Yeni ekleme için temiz kalsın)
+    $('#addAddressModal').on('hidden.bs.modal', function () {
+        var form = $(this).find('form');
+        form.attr("action", "/Address/Create");
+        form.find('input[name="Id"]').remove();
+        form[0].reset();
+        $("#addAddressModalLabel").text("Yeni Adres Bilgisi");
+    });
+
+
+$(document).ready(function () {
+    // Switch üzerinde Enter tuşuna basıldığında
+    $('#isDefaultCheck').on('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Formun submit olmasını engelle
+            
+            // Switch'in (Checkbox) değerini tersine çevir
+            var isChecked = $(this).prop('checked');
+            $(this).prop('checked', !isChecked);
+            
+            // Eğer bir değişim olayını tetiklemen gerekirse (isteğe bağlı)
+            $(this).trigger('change');
+        }
+    });
+});
+
+
+</script>

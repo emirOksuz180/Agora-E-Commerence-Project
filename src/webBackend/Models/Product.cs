@@ -4,8 +4,16 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace webBackend.Models;
 
+
 public partial class Product
 {
+
+    public Product()
+    {
+        // Nesne oluştuğu an tarih bugünkü tarih olur, 0001 yılına düşmez.
+        CreatedAt = DateTime.Now; 
+        
+    }
     public int ProductId { get; set; }
 
     public string ProductName { get; set; } = null!;
@@ -22,7 +30,7 @@ public partial class Product
 
     public bool IsActive { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public DateTime? CreatedAt { get; set; }
 
     public bool AnaSayfa { get; set; } = false;
 

@@ -46,14 +46,16 @@ public class OrderController : Controller
     [Authorize(Policy = "Order.View")]
     public async Task<ActionResult> Details(int id)
     {
+        // Debug için: Buraya bir breakpoint koyup id geliyor mu bakabilirsin.
         var order = await _context.Orders
                     .Include(i => i.OrderItems)
                     .ThenInclude(i => i.Urun)
                     .FirstOrDefaultAsync(i => i.Id == id);
 
-        if (order == null) return NotFound();
+        if (order == null) return Content("<div class='text-danger'>Sipariş bulunamadı.</div>");
 
-        return View(order);
+        // View isminin doğruluğundan emin ol: _OrderTablePartial.cshtml
+        return PartialView("_OrderTablePartial", order);
     }
 
     public async Task<ActionResult> Checkout()
@@ -95,15 +97,8 @@ public class OrderController : Controller
             Sehir = model.Sehir,
             SiparisNotu = model.SiparisNotu ?? "",
             SiparisTarihi = DateTime.Now,
-            // Önemli: Önce cart üzerinden hesaplıyoruz
-            ToplamFiyat = cart.Toplam, 
             Username = username,
-            OrderItems = cart.CartItems.Select(ci => new webBackend.Models.OrderItem
-            {
-                UrunId = ci.UrunId,
-                Fiyat = (double)ci.Urun.Price,
-                Miktar = ci.Miktar
-            }).ToList()
+            ToplamFiyat = (double)cart.Toplam // Önce fiyata emin oluyoruz
         };
 
         // Validasyon temizliği (Ücretsiz ürünler için)
@@ -111,7 +106,6 @@ public class OrderController : Controller
         {
             ModelState.ClearValidationState("ToplamFiyat");
             ModelState.MarkFieldValid("ToplamFiyat");
-
             var itemFiyatKeys = ModelState.Keys.Where(k => k.Contains("Fiyat")).ToList();
             foreach (var key in itemFiyatKeys)
             {
@@ -122,9 +116,6 @@ public class OrderController : Controller
 
         if (ModelState.IsValid)
         {
-            
-            order.ToplamFiyat = order.Toplam; 
-
             ProcessPaymentResult payment;
             if (order.ToplamFiyat == 0)
             {
@@ -137,16 +128,11 @@ public class OrderController : Controller
 
             if (payment.Status == "success")
             {
-
-                order.ToplamFiyat = (double)cart.Toplam; 
-
+                // KRİTİK DÜZELTME: Önce Siparişi Kaydet ki ID oluşsun
                 _context.Orders.Add(order);
-                
-                
-                _context.Entry(order).Property(x => x.ToplamFiyat).IsModified = true;
-
                 await _context.SaveChangesAsync();
-                
+
+                // KRİTİK DÜZELTME: Kalemleri şimdi tek tek ve doğru fiyatla ekliyoruz
                 foreach (var item in cart.CartItems)
                 {
                     var orderItem = new OrderItem
@@ -154,18 +140,17 @@ public class OrderController : Controller
                         OrderId = order.Id, 
                         UrunId = item.UrunId,
                         Miktar = item.Miktar,
-                        Fiyat = (double)item.Urun.Price 
+                        // Eğer ürün null ise fiyat 0 kalmasın diye kontrol ekliyoruz
+                        Fiyat = (double)(item.Urun?.Price ?? 0) 
                     };
                     _context.OrderItems.Add(orderItem);
                 }
 
                 await _context.SaveChangesAsync();
 
-                // 4. Sepeti Temizle (Kritik: Adam ödedi, sepet boşalmalı)
+                // 4. Sepeti Temizle
                 await _cartService.ClearCart();
-                
 
-              
                 try 
                 {
                     var orderListUrl = Url.Action("OrderList", "Order", null, Request.Scheme);
@@ -199,9 +184,8 @@ public class OrderController : Controller
             }
         }
 
-        // Hata durumunda dropdown'ları tekrar doldur
-        var iller = _context.TblIls.OrderBy(x => x.IlAdi).ToList();
-        ViewBag.Iller = new SelectList(iller, "IlAdi", "IlAdi");
+        var illerList = await _context.TblIls.OrderBy(x => x.IlAdi).ToListAsync();
+        ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi");
         ViewBag.Cart = cart;
 
         return View(model);
@@ -211,14 +195,36 @@ public class OrderController : Controller
         return View("Completed", orderId);
     }
 
-    public async Task<ActionResult> OrderList()
+    public async Task<ActionResult> OrderList(DateTime? startDate, DateTime? endDate)
     {
         var username = User.Identity?.Name;
-        var orders = await _context.Orders
+        if (string.IsNullOrEmpty(username)) return RedirectToAction("Login", "Account");
+
+        var query = _context.Orders
             .Include(i => i.OrderItems)
             .ThenInclude(i => i.Urun)
-            .Where(i => i.Username == username)
+            .Where(i => i.Username == username);
+
+        // Tarih Filtresi Uygulama
+        if (startDate.HasValue)
+        {
+            query = query.Where(o => o.SiparisTarihi >= startDate.Value);
+        }
+        
+        if (endDate.HasValue)
+        {
+            // Günü kapsasın diye 23:59:59 yapıyoruz
+            var end = endDate.Value.Date.AddDays(1).AddTicks(-1);
+            query = query.Where(o => o.SiparisTarihi <= end);
+        }
+
+        var orders = await query
+            .OrderByDescending(i => i.SiparisTarihi)
             .ToListAsync();
+
+        // View'da tarihleri geri göstermek için
+        ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
+        ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
 
         return View(orders);
     }

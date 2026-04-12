@@ -1,0 +1,38 @@
+@model Order
+
+<div class="table-responsive">
+    <table class="table table-bordered table-striped mb-2 bg-white">
+        <thead class="table-secondary">
+            <tr class="small">
+                <th>Resim</th>
+                <th>Ürün Adı</th>
+                <th>Fiyat</th>
+                <th>Adet</th>
+                <th>Toplam</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.OrderItems)
+            {
+                <tr>
+                    <td><img src="@item.Urun.ImageUrl" width="50" class="img-fluid"></td>
+                    <td class="small">@item.Urun.ProductName</td>
+                    <td>@item.Fiyat ₺</td>
+                    <td>@item.Miktar</td>
+                    <td class="fw-bold">@(item.Fiyat * item.Miktar) ₺</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <table class="table table-bordered mb-0 bg-light small">
+        <tr>
+            <td style="width: 150px;" class="fw-bold">Teslimat Adresi</td>
+            <td>@Model.AdresSatiri / @Model.Sehir / @Model.PostaKodu</td>
+        </tr>
+        <tr>
+            <td class="fw-bold">Ödeme Bilgileri</td>
+            <td>**** **** **** @(Model.Id % 2 == 0 ? "4242 (Visa)" : "5521 (MasterCard)")</td>
+        </tr>
+    </table>
+</div>
