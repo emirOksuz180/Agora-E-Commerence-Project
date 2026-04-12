@@ -1,0 +1,1 @@
+ dotnet ef dbcontext scaffold "Server=EMIR-HP\MSSQLSERVER01;Database=AgoraDb;Trusted_Connection=True;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer --output-dir Models --force
