@@ -16,7 +16,9 @@
 <section class="mt-3">
     <div class="container">
         <form method="post">
-            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+            @* Sadece genel hataları en üstte gösteriyoruz, alan hataları inputların altında *@
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            
             <div class="row">
                 <div class="col-md-8">
                     <div class="card mb-3 shadow-sm border-0">
@@ -35,11 +37,8 @@
                             <div class="row mb-3">
                                 <div class="col">
                                     <label asp-for="Sehir" class="form-label fw-bold"></label>
-                                    
-                                    <select asp-for="Sehir" 
-                                            asp-items="@(ViewBag.Iller as SelectList)" 
-                                            class="form-select">
-                                            <option value="">Şehir Seçiniz...</option>
+                                    <select asp-for="Sehir" asp-items="@(ViewBag.Iller as SelectList)" class="form-select">
+                                        <option value="">Şehir Seçiniz...</option>
                                     </select>
                                     <span asp-validation-for="Sehir" class="text-danger small"></span>
                                 </div>
@@ -52,7 +51,6 @@
                                     <label asp-for="PostaKodu" class="form-label fw-bold"></label>
                                     <input asp-for="PostaKodu" class="form-control" placeholder="34000">
                                     <span asp-validation-for="PostaKodu" class="text-danger small"></span>
-                                    
                                 </div>
                             </div>
 
@@ -63,17 +61,9 @@
                                     <span asp-validation-for="AdresSatiri" class="text-danger small"></span>
                                 </div>
                             </div>
-
-                            <div class="row mb-3">
-                                <div class="col">
-                                    <label asp-for="SiparisNotu" class="form-label fw-bold"></label>
-                                    <textarea asp-for="SiparisNotu" class="form-control" rows="2" placeholder="Varsa sipariş notunuz..."></textarea>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
-                    
                     <div class="card shadow-sm border-0">
                         <div class="card-header bg-white py-3">
                             <h2 class="h5 mb-0 fw-bold">Ödeme Bilgileri</h2>
@@ -82,43 +72,45 @@
                             @if (ViewBag.Cart.Toplam <= 0)
                             {
                                 <div class="alert alert-success border-0 shadow-sm">
-                                    <i class="fa fa-gift me-2"></i> Bu sipariş ücretsizdir, kart bilgisi gerekmez.
+                                    <i class="fa fa-gift me-2"></i> Bu sipariş ücretsizdir.
                                 </div>
-                               
-                                <input type="hidden" asp-for="CartName" value="FreeOrder" />
                                 <input type="hidden" asp-for="CartNumber" value="0000000000000000" />
-                                <input type="hidden" asp-for="CartExpirationYear" value="2026" />
-                                <input type="hidden" asp-for="CartExpirationMonth" value="01" />
-                                <input type="hidden" asp-for="CartCVV" value="000" />
                             }
                             else
                             {
                                 <div class="row mb-3">
-                                    <div class="col">
-                                        <label asp-for="CartName" class="form-label fw-bold"></label>
-                                        <input asp-for="CartName" class="form-control" placeholder="Kart Üzerindeki İsim">
+                                    <div class="col-md-12 mb-3">
+                                        <label asp-for="CartName" class="form-label small fw-bold text-secondary">Kart Üzerindeki İsim</label>
+                                        <input asp-for="CartName" class="form-control" placeholder="Ad Soyad">
                                         <span asp-validation-for="CartName" class="text-danger small"></span>
                                     </div>
-                                    <div class="col">
-                                        <label asp-for="CartNumber" class="form-label fw-bold"></label>
-                                        <input asp-for="CartNumber" class="form-control" placeholder="xxxx xxxx xxxx xxxx">
-                                        <span asp-validation-for="CartNumber" class="text-danger small"></span>
+                                    
+                                    <div class="col-md-12 mb-3">
+                                        <label asp-for="CartNumber" class="form-label small fw-bold text-secondary">Kart Numarası</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white">
+                                                <i class="fa-solid fa-credit-card text-muted" id="card-icon"></i>
+                                            </span>
+                                            <input asp-for="CartNumber" class="form-control" placeholder="0000 0000 0000 0000" maxlength="19">
+                                        </div>
+                                        <span asp-validation-for="CartNumber" id="luhn-error" class="text-danger small"></span>
                                     </div>
                                 </div>
+
                                 <div class="row mb-3">
-                                    <div class="col">
-                                        <label asp-for="CartExpirationYear" class="form-label fw-bold">Yıl</label>
-                                        <input asp-for="CartExpirationYear" class="form-control" placeholder="2026">
-                                        <span asp-validation-for="CartExpirationYear" class="text-danger small"></span>
-                                    </div>
-                                    <div class="col">
-                                        <label asp-for="CartExpirationMonth" class="form-label fw-bold">Ay</label>
-                                        <input asp-for="CartExpirationMonth" class="form-control" placeholder="05">
+                                    <div class="col-4">
+                                        <label asp-for="CartExpirationMonth" class="form-label small fw-bold text-secondary">Ay</label>
+                                        <input asp-for="CartExpirationMonth" class="form-control text-center" placeholder="05" maxlength="2">
                                         <span asp-validation-for="CartExpirationMonth" class="text-danger small"></span>
                                     </div>
-                                    <div class="col">
-                                        <label asp-for="CartCVV" class="form-label fw-bold">CVV</label>
-                                        <input asp-for="CartCVV" class="form-control" placeholder="***">
+                                    <div class="col-4">
+                                        <label asp-for="CartExpirationYear" class="form-label small fw-bold text-secondary">Yıl</label>
+                                        <input asp-for="CartExpirationYear" class="form-control text-center" placeholder="2026" maxlength="4">
+                                        <span asp-validation-for="CartExpirationYear" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col-4">
+                                        <label asp-for="CartCVV" class="form-label small fw-bold text-secondary">CVV</label>
+                                        <input asp-for="CartCVV" class="form-control text-center" placeholder="***" maxlength="3">
                                         <span asp-validation-for="CartCVV" class="text-danger small"></span>
                                     </div>
                                 </div>
@@ -127,47 +119,85 @@
                     </div>
                 </div>
 
-                
+                @* Sipariş Özeti *@
                 <div class="col-md-4">
-                        <div class="card shadow-sm border-0"> <div class="card-header bg-dark text-white"> <h2 class="h5 mb-0 py-1">Sipariş Özeti</h2>
+                    <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                        <div class="card-header bg-dark text-white">
+                            <h2 class="h5 mb-0">Sipariş Özeti</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Toplam</span>
+                                <span class="fs-4 fw-bold text-success">@ViewBag.Cart.Toplam ₺</span>
                             </div>
-
-                            <div class="card-body">
-                                <div class="list-group">
-                                     @foreach (var item in ViewBag.Cart.CartItems)
-                                    {
-                                        <div class="d-flex justify-content-between align-items-center list-group-item border-0 px-0">
-                                            <p class="mb-0 small text-muted">
-                                                @item.Urun.ProductName <span class="fw-bold text-dark">(x @item.Miktar)</span>
-                                            </p>
-                                            <span class="fw-bold">
-                                                @(item.Urun.Price * item.Miktar) ₺
-                                            </span>
-                                        </div>
-                                    }
-
-                                    <div class="d-flex justify-content-between align-items-center list-group-item px-0 text-warning">
-                                        <p class="mb-0">Ara Toplam</p>
-                                        <span>@ViewBag.Cart.araToplam ₺</span>
-                                    </div>
-
-                                    <div class="d-flex justify-content-between align-items-center list-group-item px-0 text-success">
-                                        <p class="mb-0 fw-bold">Toplam</p>
-                                        <span class="fs-4 fw-bold">
-                                            @ViewBag.Cart.Toplam ₺
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="d-grid mt-3">
-                                    <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">
-                                        Ödemeyi Tamamla
-                                    </button>
-                                </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-warning btn-lg fw-bold">Ödemeyi Tamamla</button>
                             </div>
                         </div>
+                    </div>
                 </div>
-            </div>    
+            </div>
         </form>
     </div>
 </section>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            const cardInput = $('#CartNumber');
+            const cardIcon = $('#card-icon');
+            const luhnError = $('#luhn-error');
+
+            function clearCardIcons() {
+                // 'attr' kullanarak tüm sınıfları temizleyip varsayılanı bırakmak en garanti yoldur
+                cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
+            }
+
+            cardInput.on('input', function (e) {
+                let value = e.target.value.replace(/\D/g, '');
+                let formattedValue = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+                $(this).val(formattedValue);
+
+                // --- EŞZAMANLI SAĞLAYICI TESPİTİ ---
+                clearCardIcons();
+
+                if (value.startsWith('4')) {
+                    cardIcon.attr('class', 'fa-brands fa-cc-visa text-primary');
+                } 
+                else if (/^(5[1-5]|2[2-7])/.test(value)) {
+                    cardIcon.attr('class', 'fa-brands fa-cc-mastercard text-danger');
+                } 
+                else if (/^(34|37)/.test(value)) {
+                    cardIcon.attr('class', 'fa-brands fa-cc-amex text-info');
+                }
+
+                // --- LUHN KONTROLÜ ---
+                if (value.length >= 13) {
+                    if (checkLuhn(value)) {
+                        luhnError.text('').hide();
+                        $(this).addClass('is-valid').removeClass('is-invalid');
+                    } else {
+                        luhnError.text('Geçersiz kart numarası!').show();
+                        $(this).addClass('is-invalid').removeClass('is-valid');
+                    }
+                } else {
+                    $(this).removeClass('is-valid is-invalid');
+                    luhnError.hide();
+                }
+            });
+
+            function checkLuhn(n) {
+                let sum = 0;
+                for (let i = 0; i < n.length; i++) {
+                    let digit = parseInt(n[n.length - 1 - i]);
+                    if (i % 2 === 1) {
+                        digit *= 2;
+                        if (digit > 9) digit -= 9;
+                    }
+                    sum += digit;
+                }
+                return sum % 10 === 0;
+            }
+        });
+    </script>
+}

@@ -47,6 +47,8 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<OrderItem>().ToTable("OrderItem");
+        modelBuilder.Entity<TblIl>().ToTable("tbl_il");
+        modelBuilder.Entity<TblIlce>().ToTable("tbl_ilce");
 
         modelBuilder.Entity<AppUser>(entity => entity.ToTable("AspNetUsers"));
         modelBuilder.Entity<AppRole>(entity => entity.ToTable("AspNetRoles"));

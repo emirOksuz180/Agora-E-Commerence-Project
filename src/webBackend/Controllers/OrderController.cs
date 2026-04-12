@@ -43,10 +43,10 @@ public class OrderController : Controller
         return View(orders);
     }
 
-    [Authorize(Policy = "Order.View")]
+    [Authorize]
     public async Task<ActionResult> Details(int id)
     {
-        // Debug için: Buraya bir breakpoint koyup id geliyor mu bakabilirsin.
+        
         var order = await _context.Orders
                     .Include(i => i.OrderItems)
                     .ThenInclude(i => i.Urun)
@@ -54,7 +54,7 @@ public class OrderController : Controller
 
         if (order == null) return Content("<div class='text-danger'>Sipariş bulunamadı.</div>");
 
-        // View isminin doğruluğundan emin ol: _OrderTablePartial.cshtml
+        
         return PartialView("_OrderTablePartial", order);
     }
 
@@ -81,113 +81,72 @@ public class OrderController : Controller
         var username = User.Identity?.Name!;
         var cart = await _cartService.GetCart(username);
 
-        if (cart.CartItems.Count == 0)
-        {
-            ModelState.AddModelError("", "Sepetinizde ürün yok");
-        }
+        // Boşlukları temizle
+        if (!string.IsNullOrEmpty(model.CartNumber))
+            model.CartNumber = model.CartNumber.Replace(" ", "");
 
-        ViewBag.Cart = cart;
 
-        var order = new Order
-        {
-            AdSoyad = model.AdSoyad,
-            Telefon = model.Telefon,
-            AdresSatiri = model.AdresSatiri,
-            PostaKodu = model.PostaKodu,
-            Sehir = model.Sehir,
-            SiparisNotu = model.SiparisNotu ?? "",
-            SiparisTarihi = DateTime.Now,
-            Username = username,
-            ToplamFiyat = (double)cart.Toplam // Önce fiyata emin oluyoruz
-        };
-
-        // Validasyon temizliği (Ücretsiz ürünler için)
-        if (order.ToplamFiyat == 0)
-        {
-            ModelState.ClearValidationState("ToplamFiyat");
-            ModelState.MarkFieldValid("ToplamFiyat");
-            var itemFiyatKeys = ModelState.Keys.Where(k => k.Contains("Fiyat")).ToList();
-            foreach (var key in itemFiyatKeys)
+            if (!string.IsNullOrEmpty(model.Sehir))
             {
-                ModelState.ClearValidationState(key);
-                ModelState.MarkFieldValid(key);
+                model.Sehir = model.Sehir.Trim();
+                ModelState.Remove("Sehir"); 
             }
-        }
 
         if (ModelState.IsValid)
         {
             ProcessPaymentResult payment;
-            if (order.ToplamFiyat == 0)
+
+            // TOPLAM FİYAT SIFIR İSE DİREKT ONAYLA
+            if (cart.Toplam <= 0)
             {
                 payment = new ProcessPaymentResult { Status = "success" };
             }
             else
             {
-                payment = await ProcessPayment(model, cart);
+                // Burada ProcessPayment içindeki Iyzico kodlarında 
+                // fiyatı 0 olan item'ları listeye eklemediğinden emin ol!
+                var iyziResult = await ProcessPayment(model, cart);
+                payment = (ProcessPaymentResult)iyziResult;
             }
 
             if (payment.Status == "success")
             {
-                // KRİTİK DÜZELTME: Önce Siparişi Kaydet ki ID oluşsun
+                // --- SİPARİŞ KAYIT İŞLEMLERİ (Önceki kodun aynısı) ---
+                var order = new Order { 
+                    AdSoyad = model.AdSoyad, Sehir = model.Sehir, 
+                    Username = username, ToplamFiyat = (double)cart.Toplam,
+                    SiparisTarihi = DateTime.Now, AdresSatiri = model.AdresSatiri,
+                    Telefon = model.Telefon, PostaKodu = model.PostaKodu
+                };
                 _context.Orders.Add(order);
                 await _context.SaveChangesAsync();
 
-                // KRİTİK DÜZELTME: Kalemleri şimdi tek tek ve doğru fiyatla ekliyoruz
-                foreach (var item in cart.CartItems)
-                {
-                    var orderItem = new OrderItem
-                    {
-                        OrderId = order.Id, 
-                        UrunId = item.UrunId,
-                        Miktar = item.Miktar,
-                        // Eğer ürün null ise fiyat 0 kalmasın diye kontrol ekliyoruz
-                        Fiyat = (double)(item.Urun?.Price ?? 0) 
-                    };
-                    _context.OrderItems.Add(orderItem);
+                foreach (var item in cart.CartItems) {
+                    _context.OrderItems.Add(new OrderItem {
+                        OrderId = order.Id, UrunId = item.UrunId,
+                        Miktar = item.Miktar, Fiyat = (double)(item.Urun?.Price ?? 0)
+                    });
                 }
-
                 await _context.SaveChangesAsync();
-
-                // 4. Sepeti Temizle
                 await _cartService.ClearCart();
-
-                try 
-                {
-                    var orderListUrl = Url.Action("OrderList", "Order", null, Request.Scheme);
-                    string mailSubject = $"Sipariş Onayı - #{order.Id}";
-                    string mailBody = $@"
-                        <div style='font-family: sans-serif; background-color: #f8f9fa; padding: 20px;'>
-                            <div style='max-width: 600px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; border: 1px solid #dee2e6;'>
-                                <div style='background: linear-gradient(135deg, #6610f2, #8b5cf6); padding: 25px; text-align: center; color: white;'>
-                                    <h1 style='margin: 0;'>Agora E-Commerce</h1>
-                                </div>
-                                <div style='padding: 25px;'>
-                                    <h2 style='color: #6610f2;'>Merhaba {model.AdSoyad},</h2>
-                                    <p>Siparişiniz (<strong>#{order.Id}</strong>) başarıyla alındı ve onaylandı.</p>
-                                    <p style='font-size: 18px;'>Toplam Tutar: <strong>{(order.ToplamFiyat == 0 ? "Ücretsiz" : order.ToplamFiyat.ToString("N2") + " ₺")}</strong></p>
-                                    <div style='text-align: center; margin-top: 25px;'>
-                                        <a href='{orderListUrl}' style='background: #6610f2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold;'>Siparişlerimi Görüntüle</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>";
-
-                    await _emailService.SendEmailAsync(username, mailSubject, mailBody);
-                }
-                catch { }
 
                 return RedirectToAction("Completed", new { orderId = order.Id });
             }
-            else
-            {
-                ModelState.AddModelError("", payment.ErrorMessage ?? "Ödeme işlemi sırasında bir hata oluştu.");
-            }
+
+            // Ödeme kuruluşundan gelen hatayı (basketitemprice vb.) Türkçeleştir
+            string customError = payment.ErrorMessage;
+            if (customError != null && customError.Contains("basketItemPrice"))
+                customError = "Siparişinizdeki ücretsiz ürünler nedeniyle ödeme işlemi güncellendi. Lütfen tekrar deneyin.";
+                
+            ModelState.AddModelError("", customError ?? "Ödeme hatası oluştu.");
         }
 
+        // --- HATA DURUMUNDA SAYFAYI HAZIRLA ---
         var illerList = await _context.TblIls.OrderBy(x => x.IlAdi).ToListAsync();
-        ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi");
+        // model.Sehir'i burada SelectList'e basmazsan kutu boşa düşer!
+        ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi", model.Sehir);
         ViewBag.Cart = cart;
-
+        
         return View(model);
     }
     public ActionResult Completed(int orderId)
@@ -290,16 +249,20 @@ public class OrderController : Controller
         request.BillingAddress = address;
 
         List<BasketItem> basketItems = new List<BasketItem>();
+
         foreach (var item in cart.CartItems)
         {
-            basketItems.Add(new BasketItem
+            
+            if (item.Urun.Price > 0) 
             {
-                Id = item.UrunId.ToString(),
-                Name = item.Urun.ProductName,
-                Category1 = "General",
-                ItemType = BasketItemType.PHYSICAL.ToString(),
-                Price = item.Urun.Price.ToString("F2").Replace(",", ".")
-            });
+                BasketItem basketItem = new BasketItem();
+                basketItem.Id = item.UrunId.ToString();
+                basketItem.Name = item.Urun.ProductName;
+                basketItem.Category1 = "Genel";
+                basketItem.ItemType = BasketItemType.PHYSICAL.ToString();
+                basketItem.Price = item.Urun.Price.ToString().Replace(",", ".");
+                basketItems.Add(basketItem);
+            }
         }
         request.BasketItems = basketItems;
 
@@ -309,15 +272,18 @@ public class OrderController : Controller
 
 internal class ProcessPaymentResult
 {
-  public string ?Status { get; internal set; }
-  public string? ErrorMessage { get; internal set; }
+    public string? Status { get; internal set; }
+    public string? ErrorMessage { get; internal set; } // Bu alanı doldurmamız lazım
 
-  public static implicit operator ProcessPaymentResult(Payment v)
-  {
+    public static implicit operator ProcessPaymentResult(Payment v)
+    {
         return new ProcessPaymentResult
         {
-            // IsSuccess yerine Status kontrolü yapıyoruz
-            Status = v.Status == "success" ? "success" : "failed"
+            // Iyzico'nun kendi Status değerini (success/failure) direkt alıyoruz
+            Status = v.Status, 
+            
+            // Burası kritik: Eğer hata varsa Iyzico'nun gönderdiği mesajı çekiyoruz
+            ErrorMessage = v.Status != "success" ? v.ErrorMessage : null
         };
-  }
+    }
 }

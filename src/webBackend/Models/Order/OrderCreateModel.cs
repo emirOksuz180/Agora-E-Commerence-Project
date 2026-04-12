@@ -13,7 +13,7 @@ public class OrderCreateModel
     [Required(ErrorMessage = "Şehir seçimi zorunludur.")]
     [Display(Name = "Şehir")]
 
-    [RegularExpression(@"^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$", ErrorMessage = "Şehir adı sadece harflerden oluşmalıdır. Sayı veya özel karakter girmeyiniz.")]
+    [RegularExpression(@"^[a-zA-ZğüşıöçĞÜŞİÖÇ ]+$", ErrorMessage = "Şehir adı sadece harflerden oluşmalıdır.")]
     public string Sehir { get; set; } = null!;
 
     [Required(ErrorMessage = "Adres satırı boş bırakılamaz.")]
