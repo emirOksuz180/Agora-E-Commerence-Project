@@ -7,35 +7,57 @@
     <div class="col-md-12">
         <div class="card shadow">
             <div class="card-header py-1 d-flex justify-content-between align-items-center">
-                <h5 class="card-title">Ürün Ekle</h5>
+                <h5 class="card-title">@(Model?.ProductId > 0 ? "Ürün Düzenle" : "Yeni Ürün Ekle")</h5>
                 <a asp-controller="Urun" asp-action="Index" class="btn btn-sm btn-primary">
                     <i class="fa-solid fa-list"></i>
                 </a>
             </div>
             <div class="card-body">
-                <div asp-validation-summary="All" class="text-danger"></div>
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                 <form method="post" enctype="multipart/form-data">
+                    @if (Model?.ProductId > 0)
+                    {
+                        <input type="hidden" asp-for="ProductId" />
+                    }
+
                     <div class="row mb-3">
-                        <label asp-for="ProductName" for="ProductName" class="col-sm-2 col-form-label"></label>
+                        <label asp-for="ProductName" class="col-sm-2 col-form-label"></label>
                         <div class="col-sm-10">
                             <input asp-for="ProductName" class="form-control">
                             <span asp-validation-for="ProductName" class="text-danger"></span>
                         </div>
                     </div>
+
                     <div class="row mb-3">
-                        <label asp-for="Description" for="ProductDescription" class="col-sm-2 col-form-label"></label>
+                        <label asp-for="Description" class="col-sm-2 col-form-label"></label>
                         <div class="col-sm-10">
-                            <textarea asp-for="Description"  rows="3" class="form-control"></textarea>
+                            <textarea asp-for="Description" rows="3" class="form-control"></textarea>
                         </div>
                     </div>
+
                     <div class="row mb-3">
-                        <label asp-for="Price" for="Price" class="col-sm-2 col-form-label"></label>
+                        <label asp-for="Price" class="col-sm-2 col-form-label"></label>
                         <div class="col-sm-10">
                             <input asp-for="Price" class="form-control" type="text">
                             <span asp-validation-for="Price" class="text-danger"></span>
                         </div>
                     </div>
 
+                    @* --- STOK ALANI BAŞLANGIÇ --- *@
+                    <div class="row mb-3">
+                        <label asp-for="Stock" class="col-sm-2 col-form-label">Stok Adedi</label>
+                        <div class="col-sm-10">
+                            <input asp-for="Stock" 
+                                type="number" 
+                                class="form-control" 
+                                min="0" 
+                                step="any" @* '1' yerine 'any' yaparak tarayıcı kontrolünü gevşetiyoruz *@
+                                onkeypress="return (event.charCode >= 48 && event.charCode <= 57)"
+                                placeholder="0">
+                            <small class="text-muted">Sadece tam sayı girişi yapabilirsiniz.</small>
+                        </div>
+                    </div>
+                    @* --- STOK ALANI BİTİŞ --- *@
 
                     <div class="row mb-3">
                         <label asp-for="Weight" class="col-sm-2 col-form-label"></label>
@@ -77,26 +99,28 @@
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <label asp-for="IsActive" class="col-sm-2 col-form-label"></label>
+                        <div class="col-sm-10">
+                            <input asp-for="IsActive" class="form-check-input">
+                        </div>
+                    </div>
 
                     <div class="row mb-3">
-                        <label asp-for="IsActive" for="IsActive" class="col-sm-2 col-form-label"></label>
+                        <label asp-for="AnaSayfa" class="col-sm-2 col-form-label"></label>
                         <div class="col-sm-10">
-                            <input asp-for="IsActive" class="form-check-input" onkeydown="if(event.key==='Enter'){ event.preventDefault(); this.checked = !this.checked; }">
+                            <input asp-for="AnaSayfa" class="form-check-input">
                         </div>
                     </div>
+
                     <div class="row mb-3">
-                        <label asp-for="AnaSayfa" for="AnaSayfa" class="col-sm-2 col-form-label"></label>
-                        <div class="col-sm-10">
-                            <input asp-for="AnaSayfa" class="form-check-input" onkeydown="if(event.key==='Enter'){ event.preventDefault(); this.checked = !this.checked; }">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <label asp-for="ImageFile" for="ImageFile" class="col-sm-2 col-form-label"></label>
+                        <label asp-for="ImageFile" class="col-sm-2 col-form-label"></label>
                         <div class="col-sm-10">
                             <input asp-for="ImageFile" type="file" class="form-control">
                             <span asp-validation-for="ImageFile" class="text-danger"></span>
                         </div>
                     </div>
+
                     <div class="row mb-3">
                         <label for="CategoryId" class="col-sm-2 col-form-label">Kategori</label>
                         <div class="col-sm-10">
@@ -106,6 +130,7 @@
                             <span asp-validation-for="CategoryId" class="text-danger"></span>
                         </div>
                     </div>
+
                     <div class="row mb-3">
                         <div class="col-sm-10 offset-sm-2">
                             <button type="submit" class="btn btn-primary">Kaydet</button>
@@ -118,45 +143,32 @@
 </div>
 
 @section Scripts {
-        @await Html.PartialAsync("_ValidationScriptsPartial")   
+    @await Html.PartialAsync("_ValidationScriptsPartial") 
+    
+    <script>
+        $(document).ready(function() {
+            // Desi Hesaplama
+            $("#Width, #Height, #Length").on("input", function() {
+                let w = parseFloat($("#Width").val()) || 0;
+                let h = parseFloat($("#Height").val()) || 0;
+                let l = parseFloat($("#Length").val()) || 0;
+                let desi = (w * h * l) / 3000;
+                // Eğer Desi inputu formda gizli veya başka yerdeyse günceller
+                $("#DesiDisplay").val(desi.toFixed(2)); 
+            });
+
+            // Checkbox'lar için Enter engelleme
+            $('.form-check-input').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $(this).prop('checked', !$(this).prop('checked'));
+                }
+            });
+
+            // Sayı formatı validasyon ayarı
+            $.validator.methods.number = function (value, element) {
+                return this.optional(element) || /^-?(?:\d+|\d{1,3}(?:[\s\.,]\d{3})+)(?:[\.,]\d+)?$/.test(value);
+            }
+        });
+    </script>
 }
-
-<script>
-
-    document.querySelectorAll('.form-check-input').forEach(cb => {
-    cb.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-        }
-    });
-});
-
-
-
-    
-        
-        $.validator.methods.number = function (value, element) {
-            return this.optional(element) || /^-?(?:\d+|\d{1,3}(?:[\s\.,]\d{3})+)(?:[\.,]\d+)?$/.test(value);
-        }
-
-
-
-
-
-        
-$(document).ready(function() {
-    $("#Width, #Height, #Length").on("input", function() {
-        let w = parseFloat($("#Width").val()) || 0;
-        let h = parseFloat($("#Height").val()) || 0;
-        let l = parseFloat($("#Length").val()) || 0;
-        
-        // Desi Formülü: (En * Boy * Yükseklik) / 3000
-        let desi = (w * h * l) / 3000;
-        $("#Desi").val(desi.toFixed(2));
-    });
-});
-    
-
-
-</script>
-

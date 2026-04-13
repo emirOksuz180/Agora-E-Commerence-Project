@@ -110,72 +110,68 @@ public async Task<ActionResult> Create(RegisterViewModel model)
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<ActionResult> Login(AccountLoginModel model, string? returnUrl)
-{
-    if (ModelState.IsValid)
     {
-        var user = await _userManager.FindByEmailAsync(model.Email);
-
-        if (user != null)
+        if (ModelState.IsValid)
         {
-            
-            await _signInManager.SignOutAsync();
+            var user = await _userManager.FindByEmailAsync(model.Email);
 
-            
-            var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.BeniHatirla, true);
-
-            //  2 faktorlu doğrulama gerekiyor 
-            if (result.RequiresTwoFactor)
+            if (user != null)
             {
-                
-                var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
-
-                
-                await _emailService.SendEmailAsync(user.Email!, "Giriş Doğrulama Kodu", 
-                    $"<div style='font-family:Arial; padding:20px; border:1px solid #eee; border-radius:10px;'>" +
-                    $"<h2 style='color:#6610f2;'>Güvenli Giriş</h2>" +
-                    $"<p>Sisteme erişmek için doğrulama kodunuz:</p>" +
-                    $"<h1 style='letter-spacing:5px; color:#333;'>{token}</h1>" +
-                    $"<p style='color:#888; font-size:12px;'>Bu kod 3 dakika boyunca geçerlidir.</p></div>");
-
-                
-                return RedirectToAction("TwoFactorVerify", new { ReturnUrl = returnUrl, RememberMe = model.BeniHatirla });
-            }
-
-            //  ikinci durum: giriş basarılı iki faktorlu dogrulama kapalıysa
-            if (result.Succeeded)
-            {
-                await _cartService.TransferCartToUser(user.UserName!);
-
-                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                // --- YENİ: Email Onay Kontrolü ---
+                // Şifreyi sormadan önce mail onayına bakıyoruz
+                if (!await _userManager.IsEmailConfirmedAsync(user))
                 {
-                    return Redirect(returnUrl);
+                    ModelState.AddModelError("", "E-posta adresiniz henüz doğrulanmamış. Lütfen gelen kutunuzdaki onay linkine tıklayın.");
+                    return View(model);
                 }
-                return RedirectToAction("Index", "Home");
-            }
 
-            
-            if (result.IsLockedOut)
-            {
-                var lockoutDate = await _userManager.GetLockoutEndDateAsync(user);
-                var timeleft = lockoutDate!.Value - DateTime.UtcNow;
-                ModelState.AddModelError("", $"Çok fazla hatalı deneme! Lütfen {timeleft.Minutes + 1} dakika sonra tekrar deneyin.");
+                await _signInManager.SignOutAsync();
+
+                var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.BeniHatirla, true);
+
+                if (result.RequiresTwoFactor)
+                {
+                    var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
+
+                    await _emailService.SendEmailAsync(user.Email!, "Giriş Doğrulama Kodu", 
+                        $"<div style='font-family:Arial; padding:20px; border:1px solid #eee; border-radius:10px;'>" +
+                        $"<h2 style='color:#6610f2;'>Güvenli Giriş</h2>" +
+                        $"<p>Sisteme erişmek için doğrulama kodunuz:</p>" +
+                        $"<h1 style='letter-spacing:5px; color:#333;'>{token}</h1>" +
+                        $"<p style='color:#888; font-size:12px;'>Bu kod 3 dakika boyunca geçerlidir.</p></div>");
+
+                    return RedirectToAction("TwoFactorVerify", new { ReturnUrl = returnUrl, RememberMe = model.BeniHatirla });
+                }
+
+                if (result.Succeeded)
+                {
+                    await _cartService.TransferCartToUser(user.UserName!);
+
+                    if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                    {
+                        return Redirect(returnUrl);
+                    }
+                    return RedirectToAction("Index", "Home");
+                }
+
+                if (result.IsLockedOut)
+                {
+                    var lockoutDate = await _userManager.GetLockoutEndDateAsync(user);
+                    var timeleft = lockoutDate!.Value - DateTime.UtcNow;
+                    ModelState.AddModelError("", $"Çok fazla hatalı deneme! Lütfen {timeleft.Minutes + 1} dakika sonra tekrar deneyin.");
+                }
+                else
+                {
+                    ModelState.AddModelError("", "E-posta veya şifre hatalı.");
+                }
             }
-            
-            
             else
             {
-                ModelState.AddModelError("", "E-posta veya şifre hatalı.");
+                ModelState.AddModelError("", "Kullanıcı bulunamadı.");
             }
         }
-        else
-        {
-            ModelState.AddModelError("", "Kullanıcı bulunamadı.");
-        }
+        return View(model);
     }
-    
-    
-    return View(model);
-}
 
     
     [HttpGet]
@@ -497,47 +493,47 @@ public async Task<ActionResult> Create(RegisterViewModel model)
     }
 
 
-[HttpGet]
-public async Task<IActionResult> ConfirmEmail(string userId, string token)
-{
-    if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+    [HttpGet]
+    public async Task<IActionResult> ConfirmEmail(string userId, string token)
     {
-        TempData["Mesaj"] = "Geçersiz doğrulama isteği.";
-        return RedirectToAction("Login");
+        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+        {
+            TempData["Mesaj"] = "Geçersiz doğrulama isteği.";
+            return RedirectToAction("Login");
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            TempData["Mesaj"] = "Kullanıcı bulunamadı.";
+            return RedirectToAction("Login");
+        }
+
+        // 1. ÖNCE: Token ile doğrulamayı dene
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+
+        if (result.Succeeded)
+        {
+            // Başarılıysa SecurityStamp'i güncelle ve içeri al
+            await _userManager.UpdateSecurityStampAsync(user);
+            TempData["Mesaj"] = "Email adresiniz başarıyla doğrulandı. Giriş yapabilirsiniz.";
+            return RedirectToAction("Login");
+        }
+
+        // 2. SONRA: Eğer doğrulama başarısızsa (Succeeded değilse) NEDENİNE bak
+        if (user.EmailConfirmed)
+        {
+            // Token yanlış/eski olsa bile kullanıcı zaten onaylıysa
+            TempData["Mesaj"] = "Bu email adresi zaten doğrulanmış.";
+            return RedirectToAction("Index", "Home");
+        }
+        else
+        {
+            // Kullanıcı onaylı değilse VE token yanlışsa (Senin token bozma testin buraya düşecek)
+            TempData["Mesaj"] = "Onay kodu geçersiz veya süresi dolmuş.";
+            return RedirectToAction("Login");
+        }
     }
-
-    var user = await _userManager.FindByIdAsync(userId);
-
-    if (user == null)
-    {
-        TempData["Mesaj"] = "Kullanıcı bulunamadı.";
-        return RedirectToAction("Login");
-    }
-
-    
-    if (user.EmailConfirmed)
-    {
-        TempData["Mesaj"] = "Bu email adresi zaten doğrulanmış.";
-        return RedirectToAction("Index", "Home");
-    }
-
-    var result = await _userManager.ConfirmEmailAsync(user, token);
-
-    if (!result.Succeeded)
-    {
-        TempData["Mesaj"] = "Email doğrulama başarısız veya link süresi dolmuş.";
-        return RedirectToAction("Login");
-    }
-
-    // ASP.NET Identity içinde her kullanıcıya ait gizli bir değerdir.
-
-    // Amaç:
-    // Kullanıcının oturumlarının hâlâ geçerli olup olmadığını kontrol etmek.
-    await _userManager.UpdateSecurityStampAsync(user);
-
-    TempData["Mesaj"] = "Email adresiniz başarıyla doğrulandı. Giriş yapabilirsiniz.";
-    return RedirectToAction("Login");
-}
 
 
     

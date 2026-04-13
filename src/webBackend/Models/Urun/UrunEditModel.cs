@@ -44,5 +44,10 @@ namespace webBackend.Models
         public decimal? Length { get; set; }
 
         public int Desi { get; set; }
+
+        [Required(ErrorMessage = "Stok miktarı boş bırakılamaz.")]
+        [Range(0, 1000000, ErrorMessage = "Stok miktarı 0 ile 1.000.000 arasında olmalıdır.")]
+        [RegularExpression(@"^[0-9]*$", ErrorMessage = "Lütfen sadece rakam giriniz.")]
+        public int Stock { get; set; }
     }
 }

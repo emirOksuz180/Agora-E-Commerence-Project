@@ -42,6 +42,7 @@
                                     <th style="width: 70px;">Resim</th>
                                     <th>Ürün Adı</th>
                                     <th>Fiyat</th>
+                                    <th style="width: 80px;">Stok</th>
                                     <th style="width: 50px;">Aktif</th>
                                     <th style="width: 50px;">AnaS.</th>
                                     <th>Kategori</th>
@@ -60,6 +61,26 @@
                                         </td>
                                         <td class="fw-bold">@urun.ProductName</td>
                                         <td class="text-nowrap text-end">@urun.Price.ToString("C2")</td>
+                                        
+                                        @* Stok Kolonu Entegrasyonu *@
+                                        <td class="text-center">
+                                            @if (urun.Stock <= 0) {
+                                                <span class="badge bg-secondary w-100">Tükendi</span>
+                                            } else if (urun.Stock <= 5) {
+                                                <span class="badge bg-danger shadow-sm w-100" title="Kritik Stok Seviyesi">
+                                                    <i class="fa-solid fa-fire-flame-curved me-1"></i> @urun.Stock
+                                                </span>
+                                            } else if (urun.Stock <= 20) {
+                                                <span class="badge bg-warning text-dark w-100" title="Stok Azalıyor">
+                                                    @urun.Stock
+                                                </span>
+                                            } else {
+                                                <span class="badge border text-dark w-100">
+                                                    @urun.Stock
+                                                </span>
+                                            }
+                                        </td>
+
                                         <td class="text-center">
                                             @if(urun.IsActive) {
                                                 <i class="fa-solid fa-circle-check text-success"></i>
@@ -136,7 +157,6 @@
                     form.setAttribute("method", "post");
                     form.setAttribute("action", "/Urun/Delete/" + id);
 
-                    // CSRF Token kontrolü
                     var token = $('input[name="__RequestVerificationToken"]').val();
                     if(token){
                         var tokenInput = document.createElement("input");

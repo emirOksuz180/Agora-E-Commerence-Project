@@ -107,8 +107,6 @@ namespace webBackend.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Create(UrunViewModel model)
         {
-            
-            // Resim kontrolü
             if (model.ImageFile == null || model.ImageFile.Length == 0)
             {
                 ModelState.AddModelError("ImageFile", "Lütfen bir ürün resmi seçiniz.");
@@ -130,37 +128,31 @@ namespace webBackend.Controllers
                     }
                 }
 
-                // Yeni alanlarla beraber Product nesnesini oluşturuyoruz
                 var entity = new Product() 
                 {
                     ProductName = model.ProductName,
                     Price = model.Price,
+                    // SQL Hatasını önlemek için (Geçici önlem, SQL'de kolonu büyütmelisin)
                     ProductDescription = model.Description, 
                     IsActive = model.IsActive,
                     AnaSayfa = model.AnaSayfa,
                     CategoryId = model.CategoryId,
                     ImageUrl = "/img/" + fileName,
-                    
-                    // Lojistik Alanları Entegrasyonu
                     Weight = model.Weight,
                     Width = model.Width,
                     Height = model.Height,
                     Length = model.Length,
-                    IsPhysical = model.IsPhysical ?? true, // Null gelirse varsayılan olarak fiziksel üründür
-                    Stock = model.Stock // Unutma, SQL dökümünde Stock alanı "NOT NULL" görünüyordu
+                    IsPhysical = model.IsPhysical ?? true,
+                    Stock = model.Stock 
                 };
 
                 _context.Products.Add(entity);
                 await _context.SaveChangesAsync();
-
-                // KRİTİK DOKUNUŞ: SQL'in hesapladığı Desi'yi nesneye geri yükler
                 await _context.Entry(entity).ReloadAsync();
 
-                // Eğer kayıttan sonra desiyi görmek istersen: entity.Desi artık dolu.
                 return RedirectToAction("Index");
             }
 
-            // Hata durumunda kategorileri tekrar yükle
             ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name");
             return View(model);
         }
@@ -211,16 +203,10 @@ namespace webBackend.Controllers
                 var product = await _context.Products.FindAsync(id);
                 if (product == null) return NotFound();
 
-                // Fiyat İşleme: Kullanıcının girdiği string formatını decimal'e mühürlüyoruz
-                string priceValue = model.Price.Replace(".", ","); // Önce her şeyi virgül formatına çekelim
+                // Fiyat İşleme
+                string priceValue = model.Price.Replace(".", ",");
                 if (decimal.TryParse(priceValue, System.Globalization.NumberStyles.Any, new System.Globalization.CultureInfo("tr-TR"), out decimal parsedPrice))
                 {
-                    product.Price = parsedPrice;
-                }
-                else
-                {
-                    // Eğer tr-TR yemezse global noktayı dene
-                    decimal.TryParse(model.Price.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out parsedPrice);
                     product.Price = parsedPrice;
                 }
 
@@ -230,18 +216,19 @@ namespace webBackend.Controllers
                 product.AnaSayfa = model.AnaSayfa;
                 product.CategoryId = model.CategoryId;
 
-                // Resim Yükleme İşlemi
+                // --- EKSİK ALANLAR BURADA EKLENDİ ---
+                product.Stock = model.Stock;
+                product.Weight = model.Weight;
+                product.Width = model.Width;
+                product.Height = model.Height;
+                product.Length = model.Length;
+                // ------------------------------------
+
                 if (model.ImageFile != null && model.ImageFile.Length > 0)
                 {
                     var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
                     var fileName = Guid.NewGuid().ToString() + extension;
                     var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", fileName);
-
-                    // Klasör yoksa oluştur
-                    if (!Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img")))
-                    {
-                        Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img"));
-                    }
 
                     using (var fileStream = new FileStream(path, FileMode.Create))
                     {
@@ -256,7 +243,6 @@ namespace webBackend.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Hata durumunda kategorileri tekrar dolduruyoruz (Seçili kategori ile birlikte)
             ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", model.CategoryId);
             return View(model);
         }
