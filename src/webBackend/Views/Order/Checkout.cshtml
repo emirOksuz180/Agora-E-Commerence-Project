@@ -1,12 +1,17 @@
 @model OrderCreateModel
 
+@{
+    // Dinamik yol yerine doğrudan Shared altındaki dosyayı hedefliyoruz
+    Layout = "_Layout"; 
+}
+
 @section Bar {
     <section class="bg-primary p-3">
         <div class="container">
             <nav>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="/" class="text-white">Anasayfa</a></li>
-                    <li class="breadcrumb-item text-white-50">Siparişi Tamamla</li>
+                    <li class="breadcrumb-item"><a href="/Account/Orders" class="text-white">Siparişlerim</a></li>
                 </ol>
             </nav>
         </div>
@@ -31,6 +36,14 @@
                                     <label asp-for="AdSoyad" class="form-label fw-bold"></label>
                                     <input asp-for="AdSoyad" class="form-control" placeholder="Ad Soyad giriniz">
                                     <span asp-validation-for="AdSoyad" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <label asp-for="Email" class="form-label fw-bold">E-posta Adresi</label>
+                                    <input asp-for="Email" type="email" class="form-control" placeholder="Örn: ornek@mail.com">
+                                    <span asp-validation-for="Email" class="text-danger small"></span>
                                 </div>
                             </div>
 

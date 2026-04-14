@@ -1,94 +1,156 @@
 @model Order
-@{
-    Layout = "_AdminLayout";
-}
 
-<div class="row">
-    <div class="col">
-        <div class="card shadow">
-            <div class="card-header py-1 d-flex justify-content-between align-items-center">
-                <h5 class="card-title">Sipariş No: #5</h5>
-                <span class="badge bg-success p-2">Teslim Edildi</span>
+<div class="container mt-4 mb-5">
+    
+    @* --- MESAJLAR --- *@
+    @if (TempData["Message"] != null || TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i> @(TempData["Message"] ?? TempData["SuccessMessage"])
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null || TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm" role="alert">
+            <i class="fa-solid fa-circle-exclamation me-2"></i> @(TempData["Error"] ?? TempData["ErrorMessage"])
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model == null)
+    {
+        <div class="alert alert-warning text-center">
+            <h5>Sipariş verisi yüklenemedi.</h5>
+            <p>Lütfen daha sonra tekrar deneyin veya sistem yöneticisiyle iletişime geçin.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Sipariş No: #@Model.Id</h5>
+                
+                <div class="text-end">
+                    @if (ViewBag.AllStatuses != null)
+                    {
+                        @* --- ADMIN STATÜ GÜNCELLEME --- *@
+                        <form asp-action="UpdateStatus" method="post" class="d-flex gap-2">
+                            <input type="hidden" name="orderId" value="@Model.Id" />
+                            <select name="newStatusId" class="form-select form-select-sm" onchange="this.form.submit()">
+                                @foreach (var s in (List<OrderStatus>)ViewBag.AllStatuses)
+                                {
+                                    <option value="@s.Id" selected="@(Model.StatusId == s.Id)">@s.StatusDisplayName</option>
+                                }
+                            </select>
+                        </form>
+                    }
+                    else
+                    {
+                        @* --- KULLANICI STATÜ VE AKSİYONLARI --- *@
+                        <div class="d-flex flex-column align-items-end">
+                            @{
+                                string statusName = Model.Status?.StatusDisplayName ?? "Bilinmiyor";
+                                // Statüye göre dinamik renkler
+                                string badgeClass = Model.StatusId switch
+                                {
+                                    9 => "bg-danger",   // İptal Edildi
+                                    8 => "bg-dark",     // İade Tamamlandı
+                                    7 => "bg-warning text-dark", // İade Talep Edildi
+                                    6 => "bg-success",  // Teslim Edildi
+                                    5 => "bg-info text-white", // Kargoya Verildi
+                                    _ => "bg-primary"   // Diğerleri
+                                };
+                            }
+                            <span class="badge @badgeClass p-2 mb-2">@statusName</span>
+                            
+                            @* İPTAL BUTONU (1-4 arası statülerde aktif) *@
+                            @if (Model.StatusId >= 1 && Model.StatusId <= 4)
+                            {
+                                <form asp-action="CancelOrder" method="post" onsubmit="return confirm('Siparişinizi iptal etmek istediğinize emin misiniz?');">
+                                    <input type="hidden" name="orderId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="fa-solid fa-ban me-1"></i> Siparişi İptal Et
+                                    </button>
+                                </form>
+                            }
+
+                            @* İADE TALEBİ BUTONU  *@
+                            
+                            @if (Model.StatusId == 6)
+                            {
+                                <form asp-action="UserRequestReturn" method="post" onsubmit="return confirm('İade talebi oluşturmak istediğinize emin misiniz?');">
+                                    @* Sadece hangi sipariş olduğunu bildirmemiz yeterli *@
+                                    <input type="hidden" name="orderId" value="@Model.Id" />
+                                    
+                                    <button type="submit" class="btn btn-warning btn-sm shadow-sm">
+                                        <i class="fa-solid fa-arrow-rotate-left me-1"></i> İade Talebi Oluştur
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
             </div>
+
             <div class="card-body">
+                @* Tablo ve Teslimat Bilgileri Aynı Kalıyor *@
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped mb-2">
-                        <thead class="table-secondary">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-light">
                             <tr>
-                                <th style="width: 40px;">Id</th>
-                                <th style="width: 80px;">Resim</th>
                                 <th>Ürün Adı</th>
                                 <th>Fiyat</th>
                                 <th>Adet</th>
-                                <th>Toplam</th>
+                                <th class="text-end">Toplam</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var item in Model.OrderItems)
+                            @if (Model.OrderItems != null && Model.OrderItems.Any())
+                            {
+                                @foreach (var item in Model.OrderItems)
+                                {
+                                    <tr>
+                                        <td>@(item.Urun?.ProductName ?? "Ürün Silinmiş")</td>
+                                        <td>@item.Fiyat.ToString("N2") ₺</td>
+                                        <td>@item.Miktar</td>
+                                        <td class="text-end fw-bold">@((item.Fiyat * item.Miktar).ToString("N2")) ₺</td>
+                                    </tr>
+                                }
+                            }
+                            else
                             {
                                 <tr>
-                                    <td>@item.Id</td>
-                                    <td>
-                                        <img src="@item.Urun.ImageUrl" class="img-fluid" alt="">
-                                    </td>
-                                    <td>@item.Urun.ProductName</td>
-                                    <td>@item.Fiyat ₺</td>
-                                    <td>
-                                        @item.Miktar
-                                    </td>
-                                    <td>
-                                        @(item.Fiyat* item.Miktar) ₺
-                                    </td>
+                                    <td colspan="4" class="text-center">Siparişe ait ürün bilgisi bulunamadı.</td>
                                 </tr>
                             }
-
-                            <tr class="fw-bold">
-                                <td colspan="4"></td>
-                                <td>Ara Toplam</td>
-                                <td>@Model.ToplamFiyat ₺</td>
-                            </tr>
-                            <tr class="fw-bold">
-                                <td colspan="4"></td>
-                                <td>Vergi</td>
-                                <td>@(Model.AraToplam  * 0.2) ₺ (20%)</td>
-                            </tr>
-                            <tr class="fw-bold">
-                                <td colspan="4"></td>
-                                <td>Kargo</td>
-                                <td>Ücretsiz</td>
-                            </tr>
-                            <tr class="fw-bold">
-                                <td colspan="4"></td>
-                                <td>Toplam</td>
-                                <td>@Model.ToplamFiyat ₺</td>
-                            </tr>
                         </tbody>
-                    </table>
-                    <table class="table table-bordered mb-0">
-                        <tr>
-                            <td style="width: 150px;">Teslim Tarihi</td>
-                            <td>@Model.SiparisTarihi</td>
-                        </tr>
-                        <tr>
-                            <td style="width: 150px;">Ad Soyad</td>
-                            <td>@Model.AdSoyad</td>
-                        </tr>
-                        <tr>
-                            <td style="width: 150px;">Teslimat Adresi</td>
-                            <td>@Model.AdresSatiri / @Model.Sehir / @Model.PostaKodu / @Model.Telefon</td>
-                        </tr>
-                        <tr>
-                            <td style="width: 150px;">Fatura Adresi</td>
-                            <td>@Model.AdresSatiri / @Model.Sehir / @Model.PostaKodu / @Model.Telefon</td>
-                        </tr>
-                        <tr>
-                            <td style="width: 150px;">Ödeme Bilgileri</td>
-                            <td>1234-34**-****-**** (Yapı Kredi Bankası - 3 Taksit)</td>
-                        </tr>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="3" class="text-end">Genel Toplam:</td>
+                                <td class="text-end text-primary">@Model.ToplamFiyat.ToString("N2") ₺</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
 
+                <div class="mt-4">
+                    <h6 class="fw-bold border-bottom pb-2">Teslimat Bilgileri</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Alıcı:</strong> @Model.AdSoyad</p>
+                            <p class="mb-1"><strong>E-posta:</strong> @Model.Email</p>
+                            <p class="mb-1"><strong>Telefon:</strong> @Model.Telefon</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Adres:</strong> @Model.AdresSatiri</p>
+                            <p class="mb-1"><strong>Şehir:</strong> @Model.Sehir / @Model.PostaKodu</p>
+                            <p class="mb-1"><strong>Tarih:</strong> @Model.SiparisTarihi.ToString("dd.MM.yyyy HH:mm")</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    }
 </div>

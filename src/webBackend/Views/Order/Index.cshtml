@@ -1,5 +1,4 @@
 @model List<Order>
-
 @{
     Layout = "_AdminLayout";
 }
@@ -7,20 +6,52 @@
 <div class="row">
     <div class="col">
         @await Html.PartialAsync("Partials/Admin/_AdminCards")
-        <div class="card shadow ">
-            <div class="card-header py-2">
-                <h5 class="card-title mb-0">Siparişler</h5>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h5 class="m-0 font-weight-bold text-primary">Sipariş Yönetimi & Filtreleme</h5>
             </div>
             <div class="card-body">
+                @* --- FİLTRELEME FORMU --- *@
+                <form method="get" asp-action="Index" class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <input type="text" name="email" class="form-control" placeholder="Müşteri E-mail..." value="@Context.Request.Query["email"]">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="statusId" class="form-select">
+                            <option value="">Tüm Durumlar</option>
+                            @foreach (var status in (List<OrderStatus>)ViewBag.Statuses)
+                            {
+                                <option value="@status.Id" selected="@(Context.Request.Query["statusId"] == status.Id.ToString() ? "selected" : null)">
+                                    @status.StatusDisplayName
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input type="date" name="startDate" class="form-control" value="@Context.Request.Query["startDate"]">
+                            <span class="input-group-text">-</span>
+                            <input type="date" name="endDate" class="form-control" value="@Context.Request.Query["endDate"]">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Filtrele</button>
+                    </div>
+                </form>
+
+                @* --- SİPARİŞ TABLOSU --- *@
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped mb-0">
-                        <thead class="table-secondary text-nowrap">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-dark text-nowrap">
                             <tr>
                                 <th>Sipariş No</th>
                                 <th>Müşteri Ad Soyad</th>
+                                <th>E-mail</th>
                                 <th>Toplam Tutar</th>
+                                <th>Statü Güncelle</th>
                                 <th>Sipariş Tarihi</th>
-                                <th style="width: 50px;">İşlem</th>
+                                <th style="width: 50px;">Detay</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -29,32 +60,28 @@
                                 foreach (var item in Model)
                                 {
                                     <tr>
-                                        <td class="align-middle">#@item.Id</td>
+                                        <td class="align-middle fw-bold">#@item.Id</td>
                                         <td class="align-middle">@item.AdSoyad</td>
+                                        <td class="align-middle">@item.Email</td>
                                         <td class="align-middle text-primary fw-bold">@item.ToplamFiyat.ToString("N2") ₺</td>
+                                        <td class="align-middle" style="min-width: 180px;">
+                                            @* Statü Değiştirme Formu *@
+                                            <form asp-controller="Order" asp-action="UpdateStatus" method="post">
+                                                <input type="hidden" name="orderId" value="@item.Id" />
+                                                <select name="newStatusId" class="form-select form-select-sm shadow-sm" onchange="this.form.submit()">
+                                                    @foreach (var status in (List<OrderStatus>)ViewBag.Statuses)
+                                                    {
+                                                        <option value="@status.Id" selected="@(item.StatusId == status.Id)">
+                                                            @status.StatusDisplayName
+                                                        </option>
+                                                    }
+                                                </select>
+                                            </form>
+                                        </td>
                                         <td class="align-middle">@item.SiparisTarihi.ToString("dd.MM.yyyy HH:mm")</td>
-                                        @* <td class="align-middle">
-                                            
-                                            @switch (item.SiparisDurumu) /
-                                            {
-                                                case "Beklemede":
-                                                    <span class="badge bg-warning text-dark">Onay Bekliyor</span>
-                                                    break;
-                                                case "Kargoda":
-                                                    <span class="badge bg-info text-white">Kargoya Verildi</span>
-                                                    break;
-                                                case "Teslim Edildi":
-                                                    <span class="badge bg-success text-white">Teslim Edildi</span>
-                                                    break;
-                                                default:
-                                                    <span class="badge bg-secondary text-white">@item.SiparisDurumu</span>
-                                                    break;
-                                            }
-                                        </td> *@
                                         <td class="text-center">
-                                            <a asp-controller="Order" asp-action="Details" asp-route-id="@item.Id"
-                                               class="btn btn-primary btn-sm" title="Detayları Gör">
-                                                <i class="fa-solid fa-right-long"></i>
+                                            <a asp-controller="Order" asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm">
+                                                <i class="fa-solid fa-magnifying-glass"></i>
                                             </a>
                                         </td>
                                     </tr>
@@ -62,16 +89,23 @@
                             }
                             else
                             {
-                                <tr>
-                                    <td colspan="6" class="text-center py-4">
-                                        <i class="fa-solid fa-inbox fa-2x mb-2 d-block text-muted"></i>
-                                        Henüz kaydedilmiş bir sipariş bulunamadı.
-                                    </td>
-                                </tr>
+                                <tr><td colspan="7" class="text-center py-4 text-muted">Aranan kriterlere uygun sipariş bulunamadı.</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
+
+                @* --- SAYFALAMA --- *@
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == (int)ViewBag.CurrentPage ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", new { page = i, email = Context.Request.Query["email"], statusId = Context.Request.Query["statusId"], startDate = Context.Request.Query["startDate"], endDate = Context.Request.Query["endDate"] })">@i</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>

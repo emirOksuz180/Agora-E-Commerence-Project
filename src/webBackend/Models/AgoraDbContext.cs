@@ -36,6 +36,16 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
     
     public virtual DbSet<TblIl> TblIls { get; set; } = null!; // İl/İlçe tabloların için
 
+    public virtual DbSet<ShippingRate> ShippingRates { get; set; }
+
+    public virtual DbSet<ShippingRegion> ShippingRegions { get; set; }
+
+    public virtual DbSet<ReturnRequest> ReturnRequests { get; set; }
+
+    public virtual DbSet<OrderStatus> OrderStatuses { get; set; }
+
+    public virtual DbSet<Carrier> Carriers { get; set; }
+
    
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -117,6 +127,74 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             // DİKKAT: Burayı 'CartItem' (tekil) yapıyoruz çünkü SQL'de öyleymiş!
             entity.ToTable("CartItem"); 
             entity.HasKey(e => e.CartItemId);
+        });
+
+        modelBuilder.Entity<Carrier>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Carriers__3214EC07AE65072A");
+
+            entity.Property(e => e.CarrierName).HasMaxLength(100);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+        });
+
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasOne(d => d.Status)
+                .WithMany(p => p.Orders)
+                .HasForeignKey(d => d.StatusId);
+        });
+
+
+        modelBuilder.Entity<OrderStatus>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__OrderSta__3214EC07EACB10FB");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.StatusDisplayName).HasMaxLength(100);
+            entity.Property(e => e.StatusKey).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<ReturnRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__ReturnRe__3214EC07AE50B83B");
+
+            entity.Property(e => e.IsRefunded).HasDefaultValue(false);
+            entity.Property(e => e.RequestDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.CurrentStatus).WithMany(p => p.ReturnRequests)
+                .HasForeignKey(d => d.CurrentStatusId)
+                .HasConstraintName("FK__ReturnReq__Curre__719CDDE7");
+        });
+
+
+        modelBuilder.Entity<ShippingRate>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Shipping__3214EC070529BCA5");
+
+            entity.Property(e => e.ExtraDesiPrice)
+                .HasDefaultValue(0m)
+                .HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.MaxDesi).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.MinDesi).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Carrier).WithMany(p => p.ShippingRates)
+                .HasForeignKey(d => d.CarrierId)
+                .HasConstraintName("FK__ShippingR__Carri__69FBBC1F");
+
+            entity.HasOne(d => d.Region).WithMany(p => p.ShippingRates)
+                .HasForeignKey(d => d.RegionId)
+                .HasConstraintName("FK__ShippingR__Regio__6AEFE058");
+        });
+
+        modelBuilder.Entity<ShippingRegion>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Shipping__3214EC0775C1B4C9");
+
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.RegionName).HasMaxLength(100);
         });
 
         

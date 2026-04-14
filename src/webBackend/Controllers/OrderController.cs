@@ -31,14 +31,46 @@ public class OrderController : Controller
     }
 
     [Authorize(Policy = "Order.View")]
-    public async Task<ActionResult> IndexAsync()
+    public async Task<ActionResult> IndexAsync(string email, int? statusId, DateTime? startDate, DateTime? endDate, int page = 1)
     {
-        var orders = await _context.Orders.ToListAsync();
-        var productCount = await _context.Products.CountAsync();
+        int pageSize = 10;
+        var query = _context.Orders
+            .Include(o => o.Status) // Yeni eklediğimiz statü tablosunu dahil et
+            .AsQueryable();
 
-        ViewBag.TotalSales = orders.Sum(x => x.ToplamFiyat);
-        ViewBag.OrderCount = orders.Count;
-        ViewBag.ProductCount = productCount;
+        // --- Filtreleme Mantığı ---
+        if (!string.IsNullOrEmpty(email))
+            query = query.Where(o => o.Email.Contains(email));
+
+        if (statusId.HasValue)
+            query = query.Where(o => o.StatusId == statusId);
+
+        if (startDate.HasValue)
+            query = query.Where(o => o.SiparisTarihi >= startDate.Value);
+
+        if (endDate.HasValue)
+        {
+            var end = endDate.Value.Date.AddDays(1).AddTicks(-1);
+            query = query.Where(o => o.SiparisTarihi <= end);
+        }
+
+        // --- Pagination (Sayfalama) ---
+        var totalItems = await query.CountAsync();
+        var orders = await query
+            .OrderByDescending(o => o.SiparisTarihi)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // View için gerekli veriler
+        ViewBag.Statuses = await _context.OrderStatuses.ToListAsync();
+        ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+        ViewBag.CurrentPage = page;
+        
+        // Dashboard kartları için istatistikler (Filtreden bağımsız genel veriler)
+        ViewBag.TotalSales = await _context.Orders.SumAsync(x => x.ToplamFiyat);
+        ViewBag.OrderCount = await _context.Orders.CountAsync();
+        ViewBag.ProductCount = await _context.Products.CountAsync();
 
         return View(orders);
     }
@@ -46,16 +78,45 @@ public class OrderController : Controller
     [Authorize]
     public async Task<ActionResult> Details(int id)
     {
-        
         var order = await _context.Orders
-                    .Include(i => i.OrderItems)
-                    .ThenInclude(i => i.Urun)
-                    .FirstOrDefaultAsync(i => i.Id == id);
+            .Include(o => o.Status)
+            .Include(o => o.OrderItems).ThenInclude(i => i.Urun)
+            .FirstOrDefaultAsync(i => i.Id == id);
 
-        if (order == null) return Content("<div class='text-danger'>Sipariş bulunamadı.</div>");
+        if (order == null) return NotFound();
 
+        bool isAdmin = User.IsInRole("Admin");
         
-        return PartialView("_OrderTablePartial", order);
+        // Debug için: Eğer hala sorun yaşıyorsan buradaki değerleri console'a yazdırabilirsin.
+        // Console.WriteLine($"DB Email: {order.Email} | Identity Name: {User.Identity.Name}");
+
+        if (!isAdmin)
+        {
+            // Kullanıcı kendi siparişine mi bakıyor?
+            // Identity Name genellikle Email'dir ama bazen Username olabilir. 
+            // En sağlıklısı DB'deki email ile tam eşleşme aramak.
+            bool isOwner = !string.IsNullOrEmpty(order.Email) && 
+                        order.Email.Trim().Equals(User.Identity.Name?.Trim(), StringComparison.OrdinalIgnoreCase);
+
+            if (!isOwner)
+            {
+                // Buraya düşüyorsa yetki hatası vardır. 
+                // Test amaçlı Forbid() yerine ana sayfaya hata mesajıyla yönlendirelim ki ne olduğunu anlayalım.
+                TempData["Error"] = "Bu siparişi görüntüleme yetkiniz bulunmamaktadır.";
+                return RedirectToAction("Index", "Home");
+            }
+        }
+
+        // Layout belirleme
+        ViewBag.IsAdmin = isAdmin;
+        ViewBag.SelectedLayout = isAdmin ? "~/Views/Shared/_AdminLayout.cshtml" : "~/Views/Order/Details.cshtml";
+
+        if (isAdmin)
+        {
+            ViewBag.AllStatuses = await _context.OrderStatuses.ToListAsync();
+        }
+
+        return View(order);
     }
 
     public async Task<ActionResult> Checkout()
@@ -111,22 +172,35 @@ public class OrderController : Controller
 
             if (payment.Status == "success")
             {
-                // --- SİPARİŞ KAYIT İŞLEMLERİ (Önceki kodun aynısı) ---
+                // 1. Ana Sipariş Kaydını Oluşturuyoruz
                 var order = new Order { 
-                    AdSoyad = model.AdSoyad, Sehir = model.Sehir, 
-                    Username = username, ToplamFiyat = (double)cart.Toplam,
-                    SiparisTarihi = DateTime.Now, AdresSatiri = model.AdresSatiri,
-                    Telefon = model.Telefon, PostaKodu = model.PostaKodu
+                    AdSoyad = model.AdSoyad, 
+                    Sehir = model.Sehir, 
+                    Username = username, 
+                    Email = model.Email ?? username, // Filtreleme için kritik: Modelden gelen email'i kaydet
+                    ToplamFiyat = (double)cart.Toplam,
+                    SiparisTarihi = DateTime.Now, 
+                    AdresSatiri = model.AdresSatiri,
+                    Telefon = model.Telefon, 
+                    PostaKodu = model.PostaKodu,
+                    StatusId = 2 // Ödeme başarılı -> Statü: Onaylandı (Confirmed)
                 };
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
 
-                foreach (var item in cart.CartItems) {
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync(); // OrderId'nin oluşması için önce bunu kaydediyoruz
+
+                // 2. Sipariş Kalemlerini (Ürünleri) Tek Tek Ekliyoruz
+                foreach (var item in cart.CartItems) 
+                {
                     _context.OrderItems.Add(new OrderItem {
-                        OrderId = order.Id, UrunId = item.UrunId,
-                        Miktar = item.Miktar, Fiyat = (double)(item.Urun?.Price ?? 0)
+                        OrderId = order.Id, // Az önce oluşan sipariş ID'sini bağlıyoruz
+                        UrunId = item.UrunId,
+                        Miktar = item.Miktar, 
+                        Fiyat = (double)(item.Urun?.Price ?? 0)
                     });
                 }
+
+                // 3. Kalemleri ve Sepet Temizliğini Tamamlıyoruz
                 await _context.SaveChangesAsync();
                 await _cartService.ClearCart();
 
@@ -268,7 +342,154 @@ public class OrderController : Controller
 
         return await Payment.Create(request, options);
     }
+
+
+    [HttpPost]
+    [Authorize(Policy = "Order.Edit")]
+    [ValidateAntiForgeryToken] 
+        public async Task<IActionResult> UpdateStatus(int orderId, int newStatusId)
+        {
+            // OrderItems ve Urun bilgilerini de çekmemiz gerekiyor (Stok güncellemesi için)
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(i => i.Urun)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+            
+            if (order == null) 
+            {
+                return NotFound();
+            }
+
+            // Mevcut statüyü yedekleyelim (Değişim kontrolü için)
+            int oldStatusId = order.StatusId;
+
+            // --- STOK YÖNETİMİ MANTIĞI ---
+
+            // 1. İade Tamamlandığında (7 -> 8 geçişi) stokları geri al
+            if (oldStatusId == 7 && newStatusId == 8)
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    if (item.Urun != null)
+                    {
+                        item.Urun.Stock += item.Miktar;
+                    }
+                }
+                TempData["SuccessMessage"] = $"#{orderId} nolu siparişin iadesi onaylandı ve stoklar geri yüklendi.";
+            }
+            // 2. Sipariş İptal Edildiğinde (1-4 arası -> 9 geçişi) stokları geri al
+            else if (oldStatusId < 5 && newStatusId == 9)
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    if (item.Urun != null)
+                    {
+                        item.Urun.Stock += item.Miktar;
+                    }
+                }
+                TempData["SuccessMessage"] = $"#{orderId} nolu sipariş iptal edildi ve stoklar güncellendi.";
+            }
+
+            // Statü güncelleme
+            order.StatusId = newStatusId;
+            
+            try 
+            {
+                await _context.SaveChangesAsync();
+                
+                // Eğer yukarıdaki özel mesajlar dolmadıysa genel başarı mesajını ver
+                if (TempData["SuccessMessage"] == null)
+                {
+                    TempData["SuccessMessage"] = $"#{orderId} nolu siparişin durumu başarıyla güncellendi.";
+                }
+            }
+            catch (Exception)
+            {
+                TempData["ErrorMessage"] = "Sipariş güncellenirken bir hata oluştu.";
+            }
+
+            return RedirectToAction("Index"); 
+        }
+
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> UserRequestReturn(int orderId)
+    {
+        // Siparişi çek
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return NotFound();
+
+        
+        string currentUserEmail = User.Identity.Name;
+        if (order.Email != currentUserEmail && !User.IsInRole("Admin"))
+        {
+            return Forbid();
+        }
+
+        
+        if (order.StatusId == 6)
+        {
+            order.StatusId = 7; 
+            await _context.SaveChangesAsync();
+            TempData["Message"] = "İade talebiniz başarıyla oluşturuldu.";
+        }
+        else
+        {
+            TempData["Error"] = "Bu sipariş için şu an iade talebi oluşturulamaz.";
+        }
+
+        return RedirectToAction(nameof(Details), new { id = orderId });
+    }
+
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> CancelOrder(int orderId)
+    {
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return NotFound();
+
+        // Güvenlik kontrolü (Mail uyuşmazsa iptal edemesin)
+        if (!User.IsInRole("Admin") && !order.Email.ToLower().Equals(User.Identity.Name.ToLower()))
+        {
+            return Forbid();
+        }
+
+        if (order.StatusId <= 4) // 1,2,3,4 ise iptal edebilir
+        {
+            order.StatusId = 9; // Cancelled
+            
+            // Stok iadesi
+            foreach (var item in order.OrderItems)
+            {
+                var urun = await _context.Products.FindAsync(item.UrunId);
+                if (urun != null) urun.Stock += item.Miktar;
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Message"] = "Siparişiniz iptal edildi.";
+        }
+        else
+        {
+            TempData["Error"] = "Bu aşamada sipariş iptal edilemez.";
+        }
+
+        // Details sayfasına ID ile geri dön (Bu sayede Details metodu tekrar çalışır ve Layout yüklenir)
+        return RedirectToAction(nameof(Details), new { id = orderId });
+    }
+
+
+
 }
+
+
+
+
 
 internal class ProcessPaymentResult
 {

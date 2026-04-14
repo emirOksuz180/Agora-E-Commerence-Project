@@ -10,6 +10,11 @@ public class OrderCreateModel
     [StringLength(100, MinimumLength = 3, ErrorMessage = "Ad Soyad en az 3 karakter olmalıdır.")]
     public string AdSoyad { get; set; } = null!;
 
+    [Required(ErrorMessage = "E-posta adresi zorunludur.")]
+    [DataType(DataType.EmailAddress)]
+    [RegularExpression(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", ErrorMessage = "Lütfen geçerli bir e-posta formatı giriniz (örnek@alanadi.com).")]
+    public string Email { get; set; }
+
     [Required(ErrorMessage = "Şehir seçimi zorunludur.")]
     [Display(Name = "Şehir")]
 
