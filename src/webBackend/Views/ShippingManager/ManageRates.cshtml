@@ -1,0 +1,101 @@
+@model webBackend.Models.Shipping.ShippingRateViewModel
+
+@{
+    Layout = "_AdminLayout"; 
+}
+
+<div class="container-fluid">
+    <h3>@Model.CarrierName - Kargo Fiyatlandırma Yönetimi</h3>
+    <hr />
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">Yeni Fiyat Aralığı Tanımla</div>
+        <div class="card-body">
+            <form asp-controller="ShippingRate" asp-action="AddRate" method="post" class="row g-3">
+                <input type="hidden" name="CarrierId" value="@Model.CarrierId" />
+                
+                <div class="col-md-3">
+                    <label class="form-label">Bölge</label>
+                    <select name="RegionId" class="form-select" required>
+                        <option value="">Bölge Seçin...</option>
+                        @foreach (var region in Model.Regions)
+                        {
+                            <option value="@region.Id">
+                                @region.RegionName (@Model.CarrierName)
+                            </option>
+                        }
+                    </select>
+
+                    @if (!Model.Regions.Any())
+                    {
+                        <div class="alert alert-warning border-0 shadow-sm mb-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Dikkat!</strong> Bu kargo firmasına tanımlı bir hizmet bölgesi bulunamadı. 
+                            Lütfen önce kargo listesinden bölge ataması yapın.
+                        </div>
+                    }
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Min Desi</label>
+                    <input type="number" step="0.01" name="MinDesi" class="form-control" placeholder="0.00" required />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Max Desi</label>
+                    <input type="number" step="0.01" name="MaxDesi" class="form-control" placeholder="10.00" required />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Fiyat (₺)</label>
+                    <input type="number" step="0.01" name="Price" class="form-control" placeholder="150.00" required />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Ek Desi Fiyatı (₺)</label>
+                    <input type="number" step="0.01" name="ExtraDesiPrice" class="form-control" value="0.00" />
+                </div>
+
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100 shadow-sm" @(Model.Regions.Any() ? "" : "disabled")>
+                        <i class="fas fa-plus me-1"></i> Ekle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-dark text-white">Aktif Fiyatlandırma Kuralları</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Bölge</th>
+                        <th>Desi Aralığı</th>
+                        <th>Sabit Fiyat</th>
+                        <th>+1 Ek Desi Ücreti</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var rate in Model.ExistingRates.OrderBy(x => x.Region?.RegionName).ThenBy(x => x.MinDesi))
+                    {
+                        <tr>
+                            <td>@rate.Region?.RegionName</td>
+                            <td>@rate.MinDesi - @rate.MaxDesi Desi</td>
+                            <td>@rate.Price.ToString("C2")</td>
+                            <td>@rate.ExtraDesiPrice?.ToString("C2")</td>
+                            <td>
+                                <form asp-controller="ShippingRate" asp-action="DeleteRate" method="post" onsubmit="return confirm('Bu fiyatlandırma kuralını silmek istediğinize emin misiniz?');">
+                                    <input type="hidden" name="id" value="@rate.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

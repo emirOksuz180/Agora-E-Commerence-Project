@@ -12,4 +12,8 @@ public partial class Carrier
     public bool? IsActive { get; set; }
 
     public virtual ICollection<ShippingRate> ShippingRates { get; set; } = new List<ShippingRate>();
+
+    // Bir kargo firmasının birden fazla hizmet bölgesi ve fiyatı olabilir
+    public virtual ICollection<CarrierRegion> CarrierRegions { get; set; } = new List<CarrierRegion>();
+
 }

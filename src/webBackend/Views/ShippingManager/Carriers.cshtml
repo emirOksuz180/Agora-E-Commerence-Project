@@ -1,0 +1,158 @@
+@model IEnumerable<webBackend.Models.Carrier>
+@{
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark">Kargo Firmaları</h3>
+            <p class="text-muted">Sistemdeki aktif kargo şirketlerini ve fiyatlandırma durumlarını yönetin.</p>
+        </div>
+        <button type="button" class="btn btn-primary px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addCarrierModal">
+            <i class="fas fa-plus-circle me-2"></i>Yeni Firma Ekle
+        </button>
+    </div>
+
+    @* Kargo Kartları Listesi *@
+    <div class="row">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var item in Model)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title fw-bold">@item.CarrierName</h5>
+                                <span class="badge @(item.IsActive ?? false ? "bg-success" : "bg-danger")">
+                                    @(item.IsActive ?? false ? "Aktif" : "Pasif")
+                                </span>
+                            </div>
+                            <p class="text-muted small">
+                                <i class="fas fa-info-circle me-1"></i> 
+                                Toplam @(item.ShippingRates?.Count ?? 0) fiyat kuralı tanımlı.
+                            </p>
+                            <hr class="text-muted opacity-25">
+                            <div class="d-grid gap-2">
+                                @* Fiyat Yönetimi *@
+                                <a asp-action="ManageRates" asp-route-carrierId="@item.Id" class="btn btn-light btn-sm text-primary">
+                                    <i class="fas fa-truck-loading me-1"></i> Fiyatları Yönet (Desi/Bölge)
+                                </a>
+                                
+                                <div class="d-flex gap-2">
+                                    @* Düzenle Butonu *@
+                                    <button class="btn btn-outline-warning btn-sm flex-grow-1 edit-btn" 
+                                            data-id="@item.Id" 
+                                            data-name="@item.CarrierName" 
+                                            data-active="@(item.IsActive ?? false ? "true" : "false")"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editCarrierModal">
+                                        <i class="fas fa-edit me-1"></i> Düzenle
+                                    </button>
+
+                                    @* Silme Formu *@
+                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post" 
+                                          onsubmit="return confirm('@item.CarrierName firmasını silmek istediğinize emin misiniz?');" 
+                                          class="flex-grow-1">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                            <i class="fas fa-trash-alt me-1"></i> Sil
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-info text-center py-5 shadow-sm border-0">
+                    <i class="fas fa-box-open fa-3x mb-3 opacity-50"></i>
+                    <p class="mb-0 fw-bold">Henüz hiç kargo firması eklenmemiş.</p>
+                    <small>Yeni bir firma ekleyerek başlayabilirsiniz.</small>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@* --- MODALLAR --- *@
+
+@* 1. EKLEME MODALI *@
+<div class="modal fade" id="addCarrierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Yeni Kargo Firması Ekle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Carrier" asp-action="Create" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Kargo Firma Adı</label>
+                        <input type="text" name="CarrierName" class="form-control" placeholder="Örn: Yurtiçi Kargo" required />
+                    </div>
+                    <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" name="IsActive" value="true" checked id="addActive">
+                        <label class="form-check-label fw-bold" for="addActive">Sistemde Aktif Olarak Göster</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-4">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* 2. DÜZENLEME MODALI *@
+<div class="modal fade" id="editCarrierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold">Firmayı Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Carrier" asp-action="Edit" method="post">
+                <input type="hidden" name="Id" id="edit-id" />
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Kargo Firma Adı</label>
+                        <input type="text" name="CarrierName" id="edit-name" class="form-control" required />
+                    </div>
+                    <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" name="IsActive" id="edit-active" value="true">
+                        <label class="form-check-label fw-bold" for="edit-active">Sistemde Aktif Olarak Göster</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-warning px-4">Güncelle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    
+    <script>
+        $(document).ready(function () {
+            console.log("Bootstrap ve jQuery Yüklendi!");
+            
+            // Düzenle butonu scripti burada kalmaya devam etsin...
+            $('.edit-btn').click(function () {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                const active = $(this).data('active');
+                $('#edit-id').val(id);
+                $('#edit-name').val(name);
+                $('#edit-active').prop('checked', active === true || active === "true");
+            });
+        });
+    </script>
+}

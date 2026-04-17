@@ -1,0 +1,77 @@
+@model IEnumerable<webBackend.Models.ShippingRegion>
+@{
+    Layout = "_AdminLayout";
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">Yeni Bölge Ekle</div>
+                <div class="card-body">
+                    <form asp-action="AddRegion" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Bölge Adı</label>
+                            <input name="RegionName" class="form-control" placeholder="Örn: Marmara" required />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Bölgeyi Kaydet</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-dark text-white">Mevcut Bölgeler</div>
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Bölge ID</th>
+                            <th>Bölge Adı</th>
+                            <th>Durum</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var region in Model)
+                        {
+                            <tr>
+                                <td>@region.Id</td>
+                                <td>@region.RegionName</td>
+                                <td>
+                                    <span class="badge @(region.IsActive == true ? "bg-success" : "bg-secondary")">
+                                        @(region.IsActive == true ? "Aktif" : "Pasif")
+                                    </span>
+                                </td>
+                                <td>
+                                    <form asp-action="DeleteRegion" method="post" onsubmit="return confirm('Bu bölgeyi silmek istediğinize emin misiniz?');">
+                                        <input type="hidden" name="id" value="@region.Id" />
+                                        <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

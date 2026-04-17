@@ -9,7 +9,6 @@
         <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 
-                
                 @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Category.View"))
                 {
                     <li class="nav-item">
@@ -17,7 +16,6 @@
                     </li>
                 }
 
-                
                 @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Product.View"))
                 {
                     <li class="nav-item">
@@ -25,7 +23,6 @@
                     </li>
                 }
 
-                
                 @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Slider.View"))
                 {
                     <li class="nav-item">
@@ -33,7 +30,6 @@
                     </li>
                 }
 
-                
                 @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Role.View"))
                 {
                     <li class="nav-item">
@@ -41,7 +37,6 @@
                     </li>
                 }
 
-                
                 @if (User.IsInRole("Admin") || User.HasClaim("Permission", "User.View"))
                 {
                     <li class="nav-item">
@@ -49,13 +44,29 @@
                     </li>
                 }
 
-                
                 @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Order.View"))
                 {
                     <li class="nav-item">
                         <a asp-controller="Order" asp-action="Index" class="nav-link">Sipariş</a>
                     </li>
                 }
+
+                @* --- KARGO YÖNETİMİ BAŞLANGIÇ --- *@
+                @if (User.IsInRole("Admin"))
+                {
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-warning" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Kargo Yönetimi
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" asp-controller="Carrier" asp-action="Index">Kargo Firmaları</a></li>
+                            <li><a class="dropdown-item" asp-controller="ShippingRegion" asp-action="Index">Bölgeler</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                        </ul>
+                    </li>
+                }
+                
+
             </ul>
 
             <ul class="navbar-nav mb-2 mb-lg-0">

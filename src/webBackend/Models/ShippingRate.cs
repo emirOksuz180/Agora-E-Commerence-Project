@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema; 
 
 namespace webBackend.Models;
 
@@ -7,9 +8,9 @@ public partial class ShippingRate
 {
     public int Id { get; set; }
 
-    public int? CarrierId { get; set; }
+    public int CarrierId { get; set; }
 
-    public int? RegionId { get; set; }
+    public int RegionId { get; set; }
 
     public decimal MinDesi { get; set; }
 
@@ -23,5 +24,7 @@ public partial class ShippingRate
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
+    // İsmi 'Region' olduğu için Controller'da r.Region şeklinde çağırmalısın
+    [ForeignKey("RegionId")]
     public virtual ShippingRegion? Region { get; set; }
 }

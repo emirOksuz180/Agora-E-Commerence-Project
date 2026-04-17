@@ -4,12 +4,13 @@ namespace webBackend.Services;
 
 public interface ICartService
 {
-  string GetCustomerId();
-  Task<Cart> GetCart(string customerId);
-  Task AddToCart(int urunId , int miktar = 1);
-  Task RemoveItem(int urunId , int miktar = 1);
-  Task TransferCartToUser(string username);
-  Task ClearCart();
+    string GetCustomerId();
+    Task<Cart> GetCart(string customerId); // Mevcut
+    Task<Cart> GetCartAsync();             // Düzeltildi: Task yerine Task<Cart>
+    Task AddToCart(int urunId, int miktar = 1);
+    Task RemoveItem(int urunId, int miktar = 1);
+    Task TransferCartToUser(string username);
+    Task ClearCart();
 }
 
 public class CartService : ICartService
@@ -101,6 +102,11 @@ public class CartService : ICartService
         }
 
         return cart;
+  }
+
+  public Task<Cart> GetCartAsync()
+  {
+    throw new NotImplementedException();
   }
 
   public string GetCustomerId()

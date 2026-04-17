@@ -45,6 +45,9 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
     public virtual DbSet<OrderStatus> OrderStatuses { get; set; }
 
     public virtual DbSet<Carrier> Carriers { get; set; }
+    public virtual DbSet<CarrierRegion> CarrierRegions { get; set; }
+
+    
 
    
 
@@ -195,6 +198,21 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
 
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.RegionName).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<CarrierRegion>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__CarrierR__3214EC0740EFEF37");
+
+            entity.HasOne(d => d.Carrier).WithMany(p => p.CarrierRegions)
+                .HasForeignKey(d => d.CarrierId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__CarrierRe__Carri__7849DB76");
+
+            entity.HasOne(d => d.Region).WithMany(p => p.CarrierRegions)
+                .HasForeignKey(d => d.RegionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__CarrierRe__Regio__793DFFAF");
         });
 
         
