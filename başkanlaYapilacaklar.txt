@@ -44,40 +44,40 @@
 
 27.03.2026
 
-1-) URL de doğrulanmış linkle ilgili zaten doğrulanmışsa o şekilde yazılacak
+1-) URL de doğrulanmış linkle ilgili zaten doğrulanmışsa o şekilde yazılacak ++
 
 
-2-) yetkiler DB fonksiyonel olmalı (edit create ve delete gibi) ordan düzenlenmeli yeni yetki eklendiğinde kod üzerinde de değişiklik zaman kaybı olabilir
+2-) yetkiler DB fonksiyonel olmalı (edit create ve delete gibi) oradan düzenlenmeli yeni yetki eklendiğinde kod üzerinde de değişiklik zaman kaybı olabilir
 
 
 3-) sepetten silme butonun buglı ++
 
 4-) kargo yönetimi fonksiyonu eklenecek  kargoların bölgesel fiyatlandırma olacak ürün bazlı(desisine göre olacak) ürünlerde bu tanımlanacak fiyatlandırma olacak+-
 
-5-) sepet bakiyesine göre ücretsiz kargo seçeneği eklenecek
+5-) sepet bakiyesine göre ücretsiz kargo seçeneği eklenecek --
 
 6-) kart numarası dörder haneli olacak ve visa troy kontrol olacak(luhn algoritması)++
 
 7-) checkout taki hata giderilecek ++
 
-8-) siparişlerim sayfasında accordion kaldırılacak list yapılacak ya da ajax ile (ödeme yapılan kredi kartı özet bilgileri 0olmalı)++
+8-) siparişlerim sayfasında accordion kaldırılacak list yapılacak ya da ajax ile (ödeme yapılan kredi kartı özet bilgileri olmalı)++
 
 9-) adres yönetimi ve birden fazla adres ve varsayılan adres seçilebilecek ++
 
-10-) ürün yönetimine stok bilgileri girilebilecek
+10-) ürün yönetimine stok bilgileri girilebilecek++
 
-11-) admin sayfasındaki sipariş yönetimine süreçler eklenecek(Amazon örnek al) , stok , depo tedarik gibi
+11-) admin sayfasındaki sipariş yönetimine süreçler eklenecek(Amazon örnek al) , stok , depo tedarik gibi ++
 
 
 12-) sipariş yönetimine kargo yönetimi fonksiyonu eklenecek satıcı tarafı
 
-13-) sipariş yönetiminde sipariş state leri olacak
+13-) sipariş yönetiminde sipariş state leri olacak ++
 
-14-) sipariş yönetimine filtreleme mekanizması eklenecek ürüne göre tarihe göre sipariş vere , mail göre pagination ile backend te yapılacak
+14-) sipariş yönetimine filtreleme mekanizması eklenecek ürüne göre tarihe göre sipariş vere , mail göre pagination ile backend te yapılacak ++
 
-15-) birde iade süreci eklenmeli(ÖRNEK AL(Amazon))
+15-) birde iade süreci eklenmeli(ÖRNEK AL(Amazon))++
 
-16-) git ile branch ve merge mantığı eklenecek 3 ortam olamlı product , develppemnt ve test ++
+16-) git ile branch ve merge mantığı eklenecek 3 ortam olmalı product , development ve test ++
 
 
 
