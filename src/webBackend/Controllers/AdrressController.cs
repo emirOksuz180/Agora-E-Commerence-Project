@@ -13,13 +13,13 @@ public class AddressController : Controller
     // Adres Listesi
     public async Task<IActionResult> Index()
     {
-        // Claim'den ID'yi güvenli bir şekilde alıyoruz
+        
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         // Eğer claim null ise veya int'e çevrilemiyorsa hata vermesin, login'e atsın
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
         {
-            // Alternatif olarak return RedirectToAction("Login", "Account"); diyebilirsin
+            
             return Unauthorized(); 
         }
 

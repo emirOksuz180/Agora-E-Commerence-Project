@@ -54,11 +54,11 @@
                                                 </div>
                                                 <p class="small mb-1 fw-bold text-dark">@item.FirstName @item.LastName</p>
                                                 
-                                                @* --- ADRES DETAYI BURADA --- *@
                                                 <p class="small text-muted mb-1">@item.AddressDetail</p>
                                                 
                                                 <p class="small text-muted mb-3">
-                                                    <span class="text-dark fw-semibold">@item.District / @item.City</span>
+                                                    <span class="text-dark fw-semibold">@item.District / @item.City</span> 
+                                                    @if(!string.IsNullOrEmpty(item.ZipCode)) { <span class="badge bg-light text-dark fw-normal border">@item.ZipCode</span> }
                                                 </p>
                                                 <div class="d-flex justify-content-end gap-2 border-top pt-2">
                                                     <form asp-action="Delete" asp-controller="Address" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Adresi silmek istediğinize emin misiniz?')">
@@ -103,9 +103,13 @@
                 </div>
                 <div class="modal-body p-4">
                     <div class="row g-3">
-                        <div class="col-md-12">
+                        <div class="col-md-8">
                             <label class="form-label small fw-bold text-secondary">Adres Başlığı</label>
                             <input type="text" name="AddressTitle" class="form-control" placeholder="Ev, İş vb." required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary">Posta Kodu</label>
+                            <input type="text" name="ZipCode" class="form-control" placeholder="34xxx" maxlength="5">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-secondary">Ad</label>
@@ -124,7 +128,6 @@
                             <input type="text" name="District" class="form-control" required>
                         </div>
                         
-                        @* --- ADRES DETAYI INPUTU BURADA --- *@
                         <div class="col-md-12">
                             <label class="form-label small fw-bold text-secondary">Tam Adres (Mahalle, Sokak, No)</label>
                             <textarea name="AddressDetail" class="form-control" rows="3" placeholder="Açık adresinizi buraya yazın..." required></textarea>
@@ -132,7 +135,7 @@
 
                         <div class="col-md-12">
                             <label class="form-label small fw-bold text-secondary">Telefon</label>
-                            <input type="text" name="Phone" class="form-control">
+                            <input type="text" name="Phone" class="form-control" placeholder="05xxxxxxxxx" required>
                         </div>
                         <div class="col-12">
                             <div class="form-check form-switch">
@@ -151,24 +154,21 @@
     </div>
 </div>
 
-
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).on("click", ".edit-button", function () {
         var id = $(this).data("id");
         $.get("/Address/Edit/" + id, function (data) {
-            // Modal içindeki formun action'ını Edit'e çeviriyoruz
             var form = $("#addAddressModal form");
             form.attr("action", "/Address/Edit");
             
-            // Gizli ID alanını ekle (Yoksa ekle, varsa güncelle)
             if(form.find('input[name="Id"]').length == 0){
                 form.append('<input type="hidden" name="Id" value="' + data.id + '">');
             } else {
                 form.find('input[name="Id"]').val(data.id);
             }
 
-            // Form alanlarını doldur
+            // Form alanlarını doldur (Dönen JSON verisindeki camelCase isimlendirmeye dikkat)
             form.find('input[name="AddressTitle"]').val(data.addressTitle);
             form.find('input[name="FirstName"]').val(data.firstName);
             form.find('input[name="LastName"]').val(data.lastName);
@@ -176,15 +176,14 @@
             form.find('input[name="District"]').val(data.district);
             form.find('textarea[name="AddressDetail"]').val(data.addressDetail);
             form.find('input[name="Phone"]').val(data.phone);
+            form.find('input[name="ZipCode"]').val(data.zipCode); // ZipCode eklendi
             form.find('input[name="IsDefault"]').prop('checked', data.isDefault);
 
-            // Başlığı değiştir ve modalı aç
             $("#addAddressModalLabel").text("Adresi Düzenle");
             $("#addAddressModal").modal("show");
         });
     });
 
-    // Modal kapandığında formu sıfırla (Yeni ekleme için temiz kalsın)
     $('#addAddressModal').on('hidden.bs.modal', function () {
         var form = $(this).find('form');
         form.attr("action", "/Address/Create");
@@ -192,23 +191,4 @@
         form[0].reset();
         $("#addAddressModalLabel").text("Yeni Adres Bilgisi");
     });
-
-
-$(document).ready(function () {
-    // Switch üzerinde Enter tuşuna basıldığında
-    $('#isDefaultCheck').on('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Formun submit olmasını engelle
-            
-            // Switch'in (Checkbox) değerini tersine çevir
-            var isChecked = $(this).prop('checked');
-            $(this).prop('checked', !isChecked);
-            
-            // Eğer bir değişim olayını tetiklemen gerekirse (isteğe bağlı)
-            $(this).trigger('change');
-        }
-    });
-});
-
-
 </script>

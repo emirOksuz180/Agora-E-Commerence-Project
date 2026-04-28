@@ -16,4 +16,6 @@ public partial class Carrier
     // Bir kargo firmasının birden fazla hizmet bölgesi ve fiyatı olabilir
     public virtual ICollection<CarrierRegion> CarrierRegions { get; set; } = new List<CarrierRegion>();
 
+    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+
 }

@@ -46,6 +46,7 @@
                                     <th style="width: 50px;">Aktif</th>
                                     <th style="width: 50px;">AnaS.</th>
                                     <th>Kategori</th>
+                                    <th style="width: 120px;">Kargo Firmaları</th>
                                     <th title="Ağırlık (kg)">Ağr.</th>
                                     <th title="Boyutlar (En x Boy x Yükseklik)">Boyut (cm)</th>
                                     <th>Desi</th>
@@ -97,6 +98,24 @@
                                         </td>
                                         <td><span class="badge bg-light text-dark border">@urun.CategoryName</span></td>
 
+                                        <td class="text-center">
+                                            @if (urun.CarrierNames != null && urun.CarrierNames.Any())
+                                            {
+                                                <div class="d-flex flex-wrap justify-content-center gap-1">
+                                                    @foreach (var carrierName in urun.CarrierNames)
+                                                    {
+                                                        <span class="badge bg-info text-dark" style="font-size: 0.7rem;" title="Aktif Kargo">
+                                                            <i class="fa-solid fa-truck-fast me-1"></i>@carrierName
+                                                        </span>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-danger small"><i class="fa-solid fa-triangle-exclamation"></i> Kargo Yok</span>
+                                            }
+                                        </td>
+
                                         <td class="text-center">@(urun.Weight?.ToString("N2") ?? "-")</td>
                                         <td class="text-center small">
                                             @if(urun.Width > 0) {
@@ -105,6 +124,7 @@
                                                 <span class="text-muted">-</span>
                                             }
                                         </td>
+
                                         <td class="text-center">
                                             <span class="badge bg-info text-dark fw-bold">@urun.Desi</span>
                                         </td>
@@ -140,36 +160,41 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        function deleteProduct(id, name) {
+        
+                window.deleteProduct = function(productId, productName) {
+            console.log("Fonksiyon tetiklendi:", productId);
+
             Swal.fire({
                 title: 'Emin misiniz?',
-                text: name + " isimli ürün kalıcı olarak silinecek!",
+                text: productName + " ürünü arşive taşınacak!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
                 confirmButtonText: 'Evet, Sil!',
-                cancelButtonText: 'Vazgeç',
-                reverseButtons: true
+                cancelButtonText: 'İptal'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    var form = document.createElement("form");
-                    form.setAttribute("method", "post");
-                    form.setAttribute("action", "/Urun/Delete/" + id);
-
-                    var token = $('input[name="__RequestVerificationToken"]').val();
-                    if(token){
-                        var tokenInput = document.createElement("input");
-                        tokenInput.setAttribute("type", "hidden");
-                        tokenInput.setAttribute("name", "__RequestVerificationToken");
-                        tokenInput.setAttribute("value", token);
-                        form.appendChild(tokenInput);
-                    }
-
-                    document.body.appendChild(form);
-                    form.submit();
+                    $.ajax({
+                        type: "POST",
+                        url: "/Urun/Delete", 
+                        data: { 
+                            Id: productId,
+                            "__RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val() 
+                        },
+                        success: function (response) {
+                            if (response.success) {
+                                location.reload();
+                            } else {
+                                Swal.fire('Hata!', response.message, 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Hata!', 'Sistem hatası oluştu.', 'error');
+                        }
+                    });
                 }
             });
-        }
+        };
+        
     </script>
 }

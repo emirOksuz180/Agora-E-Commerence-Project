@@ -22,7 +22,7 @@ public class HomeController : Controller
 
     public ActionResult Index()
     {
-        var urunler = _context.Products.Where(product => product.IsActive && product.AnaSayfa).ToList();
+        var urunler = _context.Products.Where(product => product.IsActive && product.AnaSayfa && !product.IsDeleted).ToList();
         ViewData["Kategoriler"] = _context.Categories.ToList();
         return View(urunler);
     }

@@ -68,5 +68,10 @@ namespace webBackend.Models
     [Range(0, 1000000, ErrorMessage = "Stok miktarı 0 ile 1.000.000 arasında olmalıdır.")]
     [RegularExpression(@"^[0-9]*$", ErrorMessage = "Lütfen sadece rakam giriniz.")]
     public int Stock { get; set; }
+
+    public int[] SelectedCarrierIds { get; set; }
+
+    public List<string> CarrierNames { get; set; } = new List<string>();
+    
     }
 }

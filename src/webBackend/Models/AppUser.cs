@@ -8,4 +8,6 @@ public class AppUser : IdentityUser<int>
 
     public virtual ICollection<UserActionPermission> UserActionPermissions { get; set; } = new List<UserActionPermission>();
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+    public virtual ICollection<UserAddress> UserAddresses { get; set; } = new List<UserAddress>();
 }

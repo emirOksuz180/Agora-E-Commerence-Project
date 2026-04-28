@@ -95,6 +95,47 @@
                         </div>
                     </div>
 
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label font-weight-bold">Kargo Firmaları</label>
+                        <div class="col-sm-10">
+                            <div class="card bg-light border-0 shadow-sm">
+                                <div class="card-body py-2">
+                                    <div class="row">
+                                        @if (ViewBag.CarrierList != null)
+                                        {
+                                            foreach (var carrier in (List<Carrier>)ViewBag.CarrierList)
+                                            {
+                                                // Eğer Edit modundaysak ve bu kargo ürünün Carriers listesindeyse 'checked' gelsin
+                                                bool isSelected = Model?.SelectedCarrierIds != null && Model.SelectedCarrierIds.Contains(carrier.Id);
+                                                
+                                                <div class="col-md-4 py-1">
+                                                    <div class="form-check form-switch">
+                                                        <input type="checkbox" 
+                                                            name="selectedCarrierIds" 
+                                                            value="@carrier.Id" 
+                                                            class="form-check-input" 
+                                                            id="carrier_@carrier.Id"
+                                                            @(isSelected ? "checked" : "")>
+                                                        <label class="form-check-label" for="carrier_@carrier.Id">
+                                                            @carrier.CarrierName
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <div class="col-12 text-muted small italic">Aktif kargo firması bulunamadı.</div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted">Bu ürünü taşıyabilecek kargo şirketlerini seçiniz.</small>
+                        </div>
+                    </div>
+                    
+
                     <div class="row mb-3">
                         <label asp-for="IsActive" class="col-sm-2 col-form-label"></label>
                         <div class="col-sm-10">

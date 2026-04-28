@@ -58,7 +58,7 @@
 
 6-) kart numarası dörder haneli olacak ve visa troy kontrol olacak(luhn algoritması)++
 
-7-) checkout taki hata giderilecek ++
+7-) checkout taki hata giderilecek --
 
 8-) siparişlerim sayfasında accordion kaldırılacak list yapılacak ya da ajax ile (ödeme yapılan kredi kartı özet bilgileri olmalı)++
 
@@ -78,6 +78,27 @@
 15-) birde iade süreci eklenmeli(ÖRNEK AL(Amazon))++
 
 16-) git ile branch ve merge mantığı eklenecek 3 ortam olmalı product , development ve test ++
+
+
+20.04.2026
+1-) bölge ve şehir eşleşmesi hardcode olamayacak dinamik şekilde düzenlenmeli admin panelinden --
+2-)  kart numarası dörder haneli olacak ve visa troy kontrol olacak(luhn algoritması)(checkout ta hata olduğundan görülemiyor)++
+3-)  checkout taki hata giderilecek ++
+4-) sipariş detay sayfası yükleniyor buna ayrı bir ekran yapılmalı ++
+5-) sipariş kısmında iptal edilirse para iadesi olmalı ürün iade edilirse iade edildikten sonra para iadesi yapılmalı --
+ 6-) sipariş yönetimine kargo yönetimi fonksiyonu eklenecek satıcı tarafı --
+7-) ürünlere alış fiyatı ekelencek buna göre ücretsiz kargo fonksiyonu da karlılık TL sine göre yapılacak(karlılık oranının yüzde onuna denk gelirse ücretsiz olabilri) isterse sabit değer olabilir(sepetin karlılık oranına ) --
+8-) sipariş filtrelemede resetlemede butonu olmalı ++
+9-) sipariş filtrelemede tarih seçimi başlangıç tarihi bitiş tarihinden sonraki bir zaman diliminde olmamalı ++
+
+10-) ürün kaldırıldıktan sonra siparişlerim ekranında tekrar gözükebilmeli geriye dönük sipariş ++
+
+11-) sipariş edilen ürünün fiyatı güncel değil sipariş anındaki fiyat ve ürün bilgileri olmalı ++
+12-) bir önceki branchlere dönebilmemiz gerek branchleri silmememiz gerek ++
+
+
+
+
 
 
 

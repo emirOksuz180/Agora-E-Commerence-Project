@@ -1,7 +1,19 @@
 @model OrderCreateModel
 
 @{
-    Layout = "~/Views/Shared/_SiteLayout.cshtml"; 
+    Layout = "~/Views/Shared/_SiteLayout.cshtml";
+
+    // Task 3: Model null gelirse sayfanın patlamasını engellemek için güvenlik bariyeri
+    if (Model == null)
+    {
+        <div class="container mt-5">
+            <div class="alert alert-warning shadow-sm">
+                <i class="fa fa-exclamation-triangle me-2"></i> Sipariş bilgileri yüklenemedi. Lütfen sepetinize dönüp tekrar deneyin.
+                <a href="/Cart" class="alert-link">Sepete Dön</a>
+            </div>
+        </div>
+        return;
+    }
 }
 
 @section Bar {
@@ -21,54 +33,83 @@
     <div class="container">
         <form method="post" id="checkoutForm">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-            
+
             <div class="row">
                 <div class="col-md-8">
-                    @* Teslimat Bilgileri *@
-                    <div class="card mb-3 shadow-sm border-0">
-                        <div class="card-header bg-white py-3">
-                            <h2 class="h5 mb-0 fw-bold">Teslimat Bilgileri</h2>
+
+                    @* Varsayılan Adres Bölümü *@
+                    @if (Model.DefaultAddress != null)
+                    {
+                        <div class="card mb-3 shadow-sm border-primary" id="defaultAddressCard">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="text-primary mb-0 fw-bold">
+                                        <i class="fa-solid fa-map-location-dot me-2"></i> @Model.DefaultAddress.AddressTitle (Varsayılan)
+                                    </h6>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" asp-for="UseDefaultAddress" id="chkUseDefault">
+                                        <label class="form-check-label small fw-bold" for="chkUseDefault">Bu adresi kullan</label>
+                                    </div>
+                                </div>
+                                <div id="defaultAddressDetail" class="small text-muted">
+                                    <p class="mb-1"><strong>Alıcı:</strong> @Model.DefaultAddress.FirstName @Model.DefaultAddress.LastName</p>
+                                    <p class="mb-1"><strong>Adres:</strong> @Model.DefaultAddress.AddressDetail</p>
+                                    <p class="mb-0"><strong>Bölge:</strong> @Model.DefaultAddress.District / @Model.DefaultAddress.City</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* Teslimat Bilgileri Formu (Yeni Adres) *@
+                    <div class="card mb-3 shadow-sm border-0" id="deliveryAddressSection" style="@(Model.DefaultAddress != null ? "display:none;" : "")">
+                        <div class="card-header bg-white py-3 border-bottom">
+                            <h2 class="h5 mb-0 fw-bold text-dark">Teslimat Adresi Bilgileri</h2>
                         </div>
                         <div class="card-body">
                             <div class="row mb-3">
-                                <div class="col">
-                                    <label asp-for="AdSoyad" class="form-label fw-bold"></label>
-                                    <input asp-for="AdSoyad" class="form-control" placeholder="Ad Soyad giriniz">
-                                    <span asp-validation-for="AdSoyad" class="text-danger small"></span>
+                                <div class="col-md-6">
+                                    <label asp-for="Ad" class="form-label fw-bold">Ad</label>
+                                    <input asp-for="Ad" class="form-control" placeholder="Adınız" />
+                                    <span asp-validation-for="Ad" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Soyad" class="form-label fw-bold">Soyad</label>
+                                    <input asp-for="Soyad" class="form-control" placeholder="Soyadınız" />
+                                    <span asp-validation-for="Soyad" class="text-danger small"></span>
                                 </div>
                             </div>
 
-                            <div class="row mb-3">
+                            <div class="row-mb3">
                                 <div class="col">
-                                    <label asp-for="Email" class="form-label fw-bold">E-posta Adresi</label>
+                                    <label asp-for="Email" class="form-label fw-bold small text-secondary">E-posta Adresi</label>
                                     <input asp-for="Email" type="email" class="form-control" placeholder="Örn: ornek@mail.com">
                                     <span asp-validation-for="Email" class="text-danger small"></span>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
-                                <div class="col">
-                                    <label asp-for="Sehir" class="form-label fw-bold"></label>
+                                <div class="col-md-4">
+                                    <label asp-for="Sehir" class="form-label fw-bold small text-secondary">Şehir</label>
                                     <select asp-for="Sehir" id="Sehir" asp-items="@(ViewBag.Iller as SelectList)" class="form-select">
                                         <option value="">Şehir Seçiniz...</option>
                                     </select>
                                     <span asp-validation-for="Sehir" class="text-danger small"></span>
                                 </div>
-                                <div class="col">
-                                    <label asp-for="Telefon" class="form-label fw-bold"></label>
+                                <div class="col-md-4">
+                                    <label asp-for="Telefon" class="form-label fw-bold small text-secondary">Telefon</label>
                                     <input asp-for="Telefon" class="form-control" placeholder="5xx xxx xxxx">
                                     <span asp-validation-for="Telefon" class="text-danger small"></span>
                                 </div>
-                                <div class="col">
-                                    <label asp-for="PostaKodu" class="form-label fw-bold"></label>
+                                <div class="col-md-4">
+                                    <label asp-for="PostaKodu" class="form-label fw-bold small text-secondary">Posta Kodu</label>
                                     <input asp-for="PostaKodu" class="form-control" placeholder="34000">
                                     <span asp-validation-for="PostaKodu" class="text-danger small"></span>
                                 </div>
                             </div>
 
-                            <div class="row mb-3">
+                            <div class="row">
                                 <div class="col">
-                                    <label asp-for="AdresSatiri" class="form-label fw-bold"></label>
+                                    <label asp-for="AdresSatiri" class="form-label fw-bold small text-secondary">Adres Detayı</label>
                                     <textarea asp-for="AdresSatiri" class="form-control" rows="3" placeholder="Mahalle, Sokak, Kapı No..."></textarea>
                                     <span asp-validation-for="AdresSatiri" class="text-danger small"></span>
                                 </div>
@@ -77,12 +118,12 @@
                     </div>
 
                     @* Ödeme Bilgileri *@
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white py-3">
-                            <h2 class="h5 mb-0 fw-bold">Ödeme Bilgileri</h2>
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white py-3 border-bottom">
+                            <h2 class="h5 mb-0 fw-bold text-dark">Ödeme Bilgileri</h2>
                         </div>
                         <div class="card-body">
-                            @if (ViewBag.Cart.Toplam <= 0)
+                            @if (ViewBag.Cart?.Toplam <= 0)
                             {
                                 <div class="alert alert-success border-0 shadow-sm">
                                     <i class="fa fa-gift me-2"></i> Bu sipariş ücretsizdir.
@@ -97,14 +138,15 @@
                                         <input asp-for="CartName" class="form-control" placeholder="Ad Soyad">
                                         <span asp-validation-for="CartName" class="text-danger small"></span>
                                     </div>
-                                    
+
                                     <div class="col-md-12 mb-3">
                                         <label asp-for="CartNumber" class="form-label small fw-bold text-secondary">Kart Numarası</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-white">
+                                            <span class="input-group-text bg-white border-end-0">
                                                 <i class="fa-solid fa-credit-card text-muted" id="card-icon"></i>
                                             </span>
-                                            <input asp-for="CartNumber" class="form-control" placeholder="0000 0000 0000 0000" maxlength="19">
+                                            @* Task 2: Kart numarası girişi *@
+                                            <input asp-for="CartNumber" id="CartNumber" class="form-control border-start-0" placeholder="0000 0000 0000 0000" maxlength="19">
                                         </div>
                                         <span asp-validation-for="CartNumber" id="luhn-error" class="text-danger small"></span>
                                     </div>
@@ -113,12 +155,12 @@
                                 <div class="row mb-3">
                                     <div class="col-4">
                                         <label asp-for="CartExpirationMonth" class="form-label small fw-bold text-secondary">Ay</label>
-                                        <input asp-for="CartExpirationMonth" class="form-control text-center" placeholder="05" maxlength="2">
+                                        <input asp-for="CartExpirationMonth" class="form-control text-center" placeholder="MM" maxlength="2">
                                         <span asp-validation-for="CartExpirationMonth" class="text-danger small"></span>
                                     </div>
                                     <div class="col-4">
                                         <label asp-for="CartExpirationYear" class="form-label small fw-bold text-secondary">Yıl</label>
-                                        <input asp-for="CartExpirationYear" class="form-control text-center" placeholder="2026" maxlength="4">
+                                        <input asp-for="CartExpirationYear" class="form-control text-center" placeholder="YY" maxlength="4">
                                         <span asp-validation-for="CartExpirationYear" class="text-danger small"></span>
                                     </div>
                                     <div class="col-4">
@@ -132,47 +174,51 @@
                     </div>
                 </div>
 
-                @* SIPARIŞ ÖZETI (GÜNCELLENEN KISIM) *@
+                @* SAĞ PANEL: SİPARİŞ ÖZETİ *@
                 <div class="col-md-4">
                     <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
-                        <div class="card-header bg-dark text-white">
-                            <h2 class="h5 mb-0">Sipariş Özeti</h2>
+                        <div class="card-header bg-dark text-white py-3">
+                            <h2 class="h6 mb-0 text-uppercase">Sipariş Özeti</h2>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-secondary">Kargo Firması Seçin</label>
                                 <select id="CarrierSelector" name="CarrierId" class="form-select" required>
                                     <option value="">Seçiniz...</option>
-                                    @if(ViewBag.Carriers != null)
+                                    @if (ViewBag.Carriers != null)
                                     {
-                                        foreach(var carrier in ViewBag.Carriers)
+                                        // SelectList olarak gönderdiğimiz için SelectListItem olarak döneriz
+                                        foreach (var carrier in (SelectList)ViewBag.Carriers)
                                         {
-                                            <option value="@carrier.Id">@carrier.CarrierName</option>
+                                            <option value="@carrier.Value">@carrier.Text</option>
                                         }
                                     }
                                 </select>
                             </div>
 
-                            <hr />
+                            <hr class="my-3" />
 
                             <div class="d-flex justify-content-between mb-2">
-                                <span>Ara Toplam</span>
-                                <span id="subtotal" class="fw-bold">@ViewBag.Cart.Toplam ₺</span>
+                                <span class="text-secondary small">Ara Toplam</span>
+                                <span id="subtotal" class="fw-bold">@ViewBag.Cart?.Toplam.ToString("C2")</span>
                             </div>
 
                             <div class="d-flex justify-content-between mb-2 text-primary">
-                                <span>Kargo Ücreti</span>
+                                <span class="small">Kargo Ücreti</span>
                                 <span id="shipping-price" class="fw-bold">0,00 ₺</span>
                             </div>
 
                             <div class="d-flex justify-content-between mb-3 border-top pt-2">
-                                <span class="fw-bold">Genel Toplam</span>
-                                <span id="grand-total" class="fs-4 fw-bold text-success">@ViewBag.Cart.Toplam ₺</span>
+                                <span class="fw-bold text-dark">Genel Toplam</span>
+                                <span id="grand-total" class="fs-4 fw-bold text-success">@ViewBag.Cart?.Toplam.ToString("C2")</span>
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-warning btn-lg fw-bold">Ödemeyi Tamamla</button>
+                                <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">Ödemeyi Tamamla</button>
                             </div>
+                            <p class="text-center text-muted x-small mt-3 mb-0" style="font-size: 0.7rem;">
+                                <i class="fa fa-lock me-1"></i> 256-bit SSL ile güvenli ödeme
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -184,40 +230,64 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            // --- KART BİLGİLERİ KONTROLLERİ ---
+            
+            // --- ADRES TOGGLE MANTIGI ---
+            $('#chkUseDefault').on('change', function() {
+            const isChecked = this.checked;
+            const $newAddressSection = $('#deliveryAddressSection');
+            
+            if(isChecked) {
+                $newAddressSection.slideUp(300);
+                // ÖNEMLİ: Validasyonun bu alanları görmemesi için 'disabled' yapıyoruz
+                $newAddressSection.find('input, select, textarea').prop('disabled', true);
+                // Hata mesajlarını temizle
+                $newAddressSection.find('.field-validation-error').empty();
+                $newAddressSection.find('.input-validation-error').removeClass('input-validation-error');
+            } else {
+                $newAddressSection.slideDown(300);
+                $newAddressSection.find('input, select, textarea').prop('disabled', false);
+            }
+        });
+
+        // FORM SUBMIT OLURKEN SON KONTROL
+        $('form').on('submit', function (e) {
+            if ($('#chkUseDefault').is(':checked')) {
+                // Eğer default adres seçiliyse, yeni adres kısmındaki validation kurallarını görmezden gel
+                $(this).validate().settings.ignore = "#deliveryAddressSection *";
+            } else {
+                // Yeni adres girilecekse hiçbir şeyi ignore etme
+                $(this).validate().settings.ignore = ":hidden";
+            }
+        });
+            // --- TASK 2: KART BİLGİLERİ MASKELİ GİRİŞ VE LUHN ---
             const cardInput = $('#CartNumber');
             const cardIcon = $('#card-icon');
             const luhnError = $('#luhn-error');
 
-            function clearCardIcons() {
-                cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
-            }
-
             cardInput.on('input', function (e) {
-                let value = e.target.value.replace(/\D/g, '');
-                let formattedValue = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+                let value = e.target.value.replace(/\D/g, ''); // Sadece rakamlar
+                let formattedValue = value.replace(/(\d{4})(?=\d)/g, '$1 '); // 4'erli boşluk
                 $(this).val(formattedValue);
 
-                clearCardIcons();
+                // Kart Tipi Belirleme (Visa/Master/Troy)
+                cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
                 if (value.startsWith('4')) {
                     cardIcon.attr('class', 'fa-brands fa-cc-visa text-primary');
                 } else if (/^(5[1-5]|2[2-7])/.test(value)) {
                     cardIcon.attr('class', 'fa-brands fa-cc-mastercard text-danger');
-                } else if (/^(34|37)/.test(value)) {
-                    cardIcon.attr('class', 'fa-brands fa-cc-amex text-info');
+                } else if (value.startsWith('9792') || value.startsWith('65')) {
+                    cardIcon.attr('class', 'fa-solid fa-credit-card text-warning'); // Troy Temsili
                 }
 
+                // Luhn Algoritması Kontrolü
                 if (value.length >= 13) {
                     if (checkLuhn(value)) {
-                        luhnError.text('').hide();
-                        $(this).addClass('is-valid').removeClass('is-invalid');
+                        luhnError.hide();
+                        $(this).removeClass('is-invalid').addClass('is-valid');
                     } else {
                         luhnError.text('Geçersiz kart numarası!').show();
                         $(this).addClass('is-invalid').removeClass('is-valid');
                     }
-                } else {
-                    $(this).removeClass('is-valid is-invalid');
-                    luhnError.hide();
                 }
             });
 
@@ -241,26 +311,25 @@
 
             function calculateShipping() {
                 const carrierId = $('#CarrierSelector').val();
-                const city = $('#Sehir').val();
-                
-                // Not: Burada 'regionId'yi şehre göre dinamik almalısın. 
-                // Şimdilik 1 (Marmara) olarak örnekliyoruz. 
-                // Gerçek senaryoda: const regionId = cityRegionMap[city];
-                const regionId = 1; 
+                let city = "";
 
+                if($('#chkUseDefault').is(':checked')) {
+                    city = "@Model.DefaultAddress?.City";
+                } else {
+                    city = $('#Sehir').val();
+                }
+                
                 if (carrierId && city) {
-                    $.get(`/api/ShippingApi/calculate?carrierId=${carrierId}&regionId=${regionId}`, function(data) {
-                        // Kargo ücretini güncelle
+                    $.get(`/api/ShippingApi/calculate?carrierId=${carrierId}&cityName=${city}`, function(data) {
                         $('#shipping-price').text(data.formattedPrice);
                         
-                        // Genel toplamı güncelle
-                        const subtotal = parseFloat("@ViewBag.Cart.Toplam".replace(',', '.'));
+                        // Toplamı güncelle (Küsürat düzeltmesi için string replace kullanıldı)
+                        const subtotalText = "@(ViewBag.Cart?.Toplam ?? 0)".replace(',', '.');
+                        const subtotal = parseFloat(subtotalText);
                         const shipping = data.shippingPrice;
                         const grandTotal = subtotal + shipping;
                         
-                        $('#grand-total').text(grandTotal.toFixed(2).replace('.', ',') + " ₺");
-                    }).fail(function() {
-                        console.error("Kargo hesaplanamadı.");
+                        $('#grand-total').text(grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " ₺");
                     });
                 }
             }

@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using webBackend.Services;
+using System.Security.Claims;
+using webBackend.Models;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 
 namespace dotnet_store.Controllers;
@@ -19,12 +22,13 @@ public class CartController : Controller
         _cartService = cartService;
     }
 
-    public async Task<ActionResult> Index()
+     public async Task<ActionResult> Index()
     {   
         var customerId = _cartService.GetCustomerId();
         var cart = await _cartService.GetCart(customerId);
         return View(cart);
     }
+
 
     [HttpPost]
     public async Task<ActionResult> AddToCart(int urunId, int miktar = 1)

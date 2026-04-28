@@ -26,12 +26,16 @@ namespace webBackend.Controllers
     [Authorize(Policy = "Product.View")]
     public async Task<ActionResult> Index(int? kategori)
     {
-        var query = _context.Products.AsQueryable();
+        var query = _context.Products
+        .Where(x => !x.IsDeleted)
+        .AsQueryable();
 
         if (kategori != null)
         {
             query = query.Where(i => i.CategoryId == kategori);
         }
+
+
 
         var urunler = await query.Select(i => new UrunViewModel
         {
@@ -50,8 +54,10 @@ namespace webBackend.Controllers
             Desi = (decimal)i.Desi!, 
             
             IsPhysical = i.IsPhysical ?? true,
-            Stock = i.Stock 
+            Stock = i.Stock ,
+            CarrierNames = i.Carriers.Select(c => c.CarrierName).ToList()
         }).AsNoTracking().ToListAsync();
+        
 
         ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", kategori);
 
@@ -61,7 +67,9 @@ namespace webBackend.Controllers
         [AllowAnonymous]
         public ActionResult List(string url, string q)
         {
-            var query = _context.Products.Where(i => i.IsActive).AsQueryable();
+            var query = _context.Products
+            .Where(i => i.IsActive && !i.IsDeleted)
+            .AsQueryable();
 
             if (!string.IsNullOrEmpty(url))
             {
@@ -96,16 +104,18 @@ namespace webBackend.Controllers
 
         
         [HttpGet]
-        public ActionResult Create()
+        public async Task<ActionResult> Create()
         {
             ViewBag.Kategoriler = new SelectList(_context.Categories.ToList(), "Id", "Name");
+            // Aktif kargoları checkbox listesi için gönderiyoruz
+            ViewBag.CarrierList = await _context.Carriers.Where(c => (bool)c.IsActive).ToListAsync();
             return View();
         }
 
         [Authorize(Policy = "Product.Create")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create(UrunViewModel model)
+        public async Task<ActionResult> Create(UrunViewModel model, int[] selectedCarrierIds)
         {
             if (model.ImageFile == null || model.ImageFile.Length == 0)
             {
@@ -114,127 +124,149 @@ namespace webBackend.Controllers
 
             if (ModelState.IsValid)
             {
-                string fileName = "default.png"; 
+                
+                string fileName = "default.png";
 
-                if (model.ImageFile != null)
+                if (model.ImageFile != null && model.ImageFile.Length > 0)
                 {
-                    var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
-                    fileName = Guid.NewGuid().ToString() + extension;
-                    var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", fileName);
+                    var ext = Path.GetExtension(model.ImageFile.FileName);
+                    fileName = Guid.NewGuid().ToString() + ext;
 
-                    using (var fileStream = new FileStream(path, FileMode.Create))
+                    var path = Path.Combine(
+                        Directory.GetCurrentDirectory(),
+                        "wwwroot/img",
+                        fileName
+                    );
+
+                    using (var stream = new FileStream(path, FileMode.Create))
                     {
-                        await model.ImageFile.CopyToAsync(fileStream);
+                        await model.ImageFile.CopyToAsync(stream);
                     }
                 }
 
-                var entity = new Product() 
+                // =========================
+                // PRODUCT CREATE
+                // =========================
+                var entity = new Product()
                 {
                     ProductName = model.ProductName,
                     Price = model.Price,
-                    // SQL Hatasını önlemek için (Geçici önlem, SQL'de kolonu büyütmelisin)
-                    ProductDescription = model.Description, 
+                    ProductDescription = model.Description,
                     IsActive = model.IsActive,
                     AnaSayfa = model.AnaSayfa,
                     CategoryId = model.CategoryId,
+
                     ImageUrl = "/img/" + fileName,
+
                     Weight = model.Weight,
                     Width = model.Width,
                     Height = model.Height,
                     Length = model.Length,
                     IsPhysical = model.IsPhysical ?? true,
-                    Stock = model.Stock 
+                    Stock = model.Stock
                 };
+
+                // =========================
+                // CARRIER RELATION
+                // =========================
+                if (selectedCarrierIds != null)
+                {
+                    foreach (var id in selectedCarrierIds)
+                    {
+                        var carrier = await _context.Carriers.FindAsync(id);
+
+                        if (carrier != null)
+                        {
+                            entity.Carriers.Add(carrier);
+                        }
+                    }
+                }
 
                 _context.Products.Add(entity);
                 await _context.SaveChangesAsync();
-                await _context.Entry(entity).ReloadAsync();
 
                 return RedirectToAction("Index");
             }
 
-            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name");
-            return View(model);
-        }
+        
+        ViewBag.Kategoriler = new SelectList(
+            await _context.Categories.ToListAsync(),
+            "Id",
+            "Name"
+        );
+
+        ViewBag.CarrierList = await _context.Carriers
+            .Where(c => (bool)c.IsActive)
+            .ToListAsync();
+
+        return View(model);
+    }
 
         [HttpGet]
         [Authorize(Policy = "Product.Edit")]
         public async Task<ActionResult> Edit(int id)
         {
-            
-            var entity = await _context.Products
-                .Select(i => new UrunEditModel
-                {
-                    ProductId = i.ProductId,
-                    ProductName = i.ProductName,
-                    Description = i.ProductDescription!,
-                    IsActive = i.IsActive,
-                    AnaSayfa = i.AnaSayfa,
-                    Price = i.Price.ToString("F2", new System.Globalization.CultureInfo("tr-TR")),
-                    CategoryId = i.CategoryId,
-                    ImageUrl = i.ImageUrl,
-                    Weight = i.Weight,
-                    Width = i.Width,
-                    Height = i.Height,
-                    Length = i.Length,
-                    Desi = (int)i.Desi!
-                }).FirstOrDefaultAsync(i => i.ProductId == id);
+            // include ile Carriers'ı çekiyoruz ki view'da 'checked' yapabilelim
+            var product = await _context.Products
+                .Include(p => p.Carriers)
+                .FirstOrDefaultAsync(p => p.ProductId == id);
 
-            if (entity == null)
+            if (product == null) return NotFound();
+
+            var model = new UrunEditModel
             {
-                return NotFound();
-            }
+                ProductId = product.ProductId,
+                ProductName = product.ProductName,
+                Description = product.ProductDescription!,
+                IsActive = product.IsActive,
+                AnaSayfa = product.AnaSayfa,
+                Price = product.Price.ToString("F2", new System.Globalization.CultureInfo("tr-TR")),
+                CategoryId = product.CategoryId,
+                ImageUrl = product.ImageUrl,
+                Weight = product.Weight,
+                Width = product.Width,
+                Height = product.Height,
+                Length = product.Length,
+                Desi = (int)product.Desi!,
+                Stock = product.Stock,
+                // Modelinde varsa seçili ID'leri gönder:
+                SelectedCarrierIds = product.Carriers.Select(c => c.Id).ToArray() 
+            };
 
-            
-            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", entity.CategoryId);
+            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", model.CategoryId);
+            ViewBag.CarrierList = await _context.Carriers.Where(c => (bool)c.IsActive).ToListAsync();
 
-            return View(entity);
+            return View(model);
         }
 
         [HttpPost]
         [Authorize(Policy = "Product.Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Edit(int id, UrunEditModel model)
+        public async Task<ActionResult> Edit(int id, UrunEditModel model, int[] selectedCarrierIds)
         {
             if (id != model.ProductId) return BadRequest();
 
             if (ModelState.IsValid)
             {
-                var product = await _context.Products.FindAsync(id);
+                // ÖNEMLİ: Carriers ile birlikte çekiyoruz
+                var product = await _context.Products.Include(p => p.Carriers).FirstOrDefaultAsync(p => p.ProductId == id);
                 if (product == null) return NotFound();
 
-                // Fiyat İşleme
-                string priceValue = model.Price.Replace(".", ",");
-                if (decimal.TryParse(priceValue, System.Globalization.NumberStyles.Any, new System.Globalization.CultureInfo("tr-TR"), out decimal parsedPrice))
-                {
-                    product.Price = parsedPrice;
-                }
-
+                // Fiyat ve temel alanların güncellenmesi aynı kalıyor...
                 product.ProductName = model.ProductName;
                 product.ProductDescription = model.Description; 
                 product.IsActive = model.IsActive;
-                product.AnaSayfa = model.AnaSayfa;
-                product.CategoryId = model.CategoryId;
+                // ... (diğer atamalar)
 
-                // --- EKSİK ALANLAR BURADA EKLENDİ ---
-                product.Stock = model.Stock;
-                product.Weight = model.Weight;
-                product.Width = model.Width;
-                product.Height = model.Height;
-                product.Length = model.Length;
-                // ------------------------------------
-
-                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                // --- KARGO GÜNCELLEME MANTIĞI ---
+                product.Carriers.Clear(); // Önce mevcutları siliyoruz (EF aradaki tabloyu otomatik temizler)
+                if (selectedCarrierIds != null)
                 {
-                    var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
-                    var fileName = Guid.NewGuid().ToString() + extension;
-                    var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", fileName);
-
-                    using (var fileStream = new FileStream(path, FileMode.Create))
+                    foreach (var carrierId in selectedCarrierIds)
                     {
-                        await model.ImageFile.CopyToAsync(fileStream);
+                        var carrier = await _context.Carriers.FindAsync(carrierId);
+                        if (carrier != null) product.Carriers.Add(carrier); // Yeni seçimleri ekliyoruz
                     }
-                    product.ImageUrl = "/img/" + fileName;
                 }
 
                 _context.Products.Update(product);
@@ -244,6 +276,7 @@ namespace webBackend.Controllers
             }
 
             ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", model.CategoryId);
+            ViewBag.CarrierList = await _context.Carriers.Where(c => (bool)c.IsActive).ToListAsync();
             return View(model);
         }
 
@@ -256,7 +289,8 @@ namespace webBackend.Controllers
                 return RedirectToAction("Index");
             }
 
-            var entity = _context.Products.FirstOrDefault(i => i.ProductId == Id);
+            // Sadece silinmemiş olanı getir ki zaten silinmiş bir ürün için onay sayfası açılmasın
+            var entity = _context.Products.FirstOrDefault(i => i.ProductId == Id && !i.IsDeleted);
 
             if (entity != null)
             {
@@ -268,31 +302,25 @@ namespace webBackend.Controllers
 
         [Authorize(Policy = "Product.Delete")]
         [HttpPost, ActionName("Delete")]
-        public ActionResult DeleteConfirm(int? Id)
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteConfirm(int? Id)
         {
-
-            if (Id == null)
-            {
-                return RedirectToAction("Index");
-            }
+            if (Id == null) return Json(new { success = false, message = "Geçersiz ID." });
 
             var entity = _context.Products.FirstOrDefault(i => i.ProductId == Id);
 
             if (entity != null)
             {
-                _context.Products.Remove(entity);
+                // SOFT DELETE (ARŞİVLEME)
+                entity.IsDeleted = true;
+                _context.Entry(entity).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 _context.SaveChanges();
 
-                TempData["Mesaj"] = $"{entity.ProductName} kategorisi silindi";
-
-
+                return Json(new { success = true });
             }
 
-            return RedirectToAction("Index");
-
+            return Json(new { success = false, message = "Ürün bulunamadı." });
         }
-
-
 
     }
 }

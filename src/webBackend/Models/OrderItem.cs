@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace webBackend.Models;
 
-[Table("OrderItem")]
 public partial class OrderItem
 {
     public int Id { get; set; }
@@ -16,6 +14,14 @@ public partial class OrderItem
     public double Fiyat { get; set; }
 
     public int Miktar { get; set; }
+
+    public decimal PriceAtOrder { get; set; }
+
+    public string? ProductNameSnapshot { get; set; }
+
+    public string? ProductImageSnapshot { get; set; }
+
+    public string? ProductCodeSnapshot { get; set; }
 
     public virtual Order Order { get; set; } = null!;
 
