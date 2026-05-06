@@ -87,7 +87,7 @@
 4-) sipariş detay sayfası yükleniyor buna ayrı bir ekran yapılmalı ++
 5-) sipariş kısmında iptal edilirse para iadesi olmalı ürün iade edilirse iade edildikten sonra para iadesi yapılmalı --
  6-) sipariş yönetimine kargo yönetimi fonksiyonu eklenecek satıcı tarafı --
-7-) ürünlere alış fiyatı ekelencek buna göre ücretsiz kargo fonksiyonu da karlılık TL sine göre yapılacak(karlılık oranının yüzde onuna denk gelirse ücretsiz olabilri) isterse sabit değer olabilir(sepetin karlılık oranına ) --
+7-) ürünlere alış fiyatı eklenecek buna göre ücretsiz kargo fonksiyonu da karlılık TL sine göre yapılacak(karlılık oranının yüzde onuna denk gelirse ücretsiz olabilri) isterse sabit değer olabilir(sepetin karlılık oranına ) --
 8-) sipariş filtrelemede resetlemede butonu olmalı ++
 9-) sipariş filtrelemede tarih seçimi başlangıç tarihi bitiş tarihinden sonraki bir zaman diliminde olmamalı ++
 
@@ -97,6 +97,14 @@
 12-) bir önceki branchlere dönebilmemiz gerek branchleri silmememiz gerek ++
 
 
+
+1-) bölge ve şehir eşleşmesi hardcode olamayacak dinamik şekilde düzenlenmeli admin panelinden ++
+
+5-) sipariş kısmında iptal edilirse para iadesi olmalı ürün iade edilirse iade edildikten sonra para iadesi yapılmalı --
+
+6-) sipariş yönetimine kargo yönetimi fonksiyonu eklenecek satıcı tarafı --
+
+7-) ürünlere alış fiyatı eklenecek buna göre ücretsiz kargo fonksiyonu da karlılık TL sine göre yapılacak( örnek : karlılık oranının yüzde onuna denk gelirse ücretsiz olabilir) isterse sabit değer olabilir(sepetin karlılık oranına göre ) --
 
 
 

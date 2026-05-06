@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using webBackend.Models.StoredProcedures;
 
 namespace webBackend.Models;
 
@@ -20,8 +21,6 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
 
     public virtual DbSet<UserAddress> UserAddresses { get; set; }
 
-    // AgoraDbContext.cs içine, diğer DbSet'lerin yanına bunları yapıştır:
-
     public virtual DbSet<Product> Products { get; set; } = null!;
     public virtual DbSet<Category> Categories { get; set; } = null!;
     public virtual DbSet<Slider> Sliders { get; set; } = null!;
@@ -34,7 +33,9 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
     public virtual DbSet<RoleActionPermission> RoleActionPermissions { get; set; } = null!;
     public virtual DbSet<UserActionPermission> UserActionPermissions { get; set; } = null!;
     
-    public virtual DbSet<TblIl> TblIls { get; set; } = null!; // İl/İlçe tabloların için
+    public virtual DbSet<TblIl> TblIls { get; set; } = null!; 
+
+    public virtual DbSet<TblIlce> TblIlces { get; set; }
 
     public virtual DbSet<ShippingRate> ShippingRates { get; set; }
 
@@ -46,6 +47,9 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
 
     public virtual DbSet<Carrier> Carriers { get; set; }
     public virtual DbSet<CarrierRegion> CarrierRegions { get; set; }
+    public virtual DbSet<CarrierDistrictExclusion> CarrierDistrictExclusions { get; set; }
+
+    public virtual DbSet<OrderShippingDetail> OrderShippingDetails { get; set; }
 
     
 
@@ -56,12 +60,51 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
         => optionsBuilder.UseSqlServer("Server=EMIR-HP\\MSSQLSERVER01;Database=AgoraDb;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
+    {   
+        modelBuilder.Entity<Sp_GetAvailableShippingOptions_Result>().HasNoKey();
         base.OnModelCreating(modelBuilder);
 
+        
+
         modelBuilder.Entity<OrderItem>().ToTable("OrderItem");
-        modelBuilder.Entity<TblIl>().ToTable("tbl_il");
-        modelBuilder.Entity<TblIlce>().ToTable("tbl_ilce");
+        modelBuilder.Entity<TblIl>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__tbl_il__3213E83FD4A7F79E");
+
+            entity.ToTable("tbl_il");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
+            entity.Property(e => e.IlAdi)
+                .HasMaxLength(50)
+                .HasColumnName("ilAdi");
+
+            entity.HasOne(d => d.Region).WithMany(p => p.TblIls)
+                .HasForeignKey(d => d.RegionId)
+                .HasConstraintName("FK_tbl_il_ShippingRegions");
+        });
+
+        modelBuilder.Entity<TblIlce>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__tbl_ilce__3213E83F555E6A77");
+
+            entity.ToTable("tbl_ilce");
+
+            entity.HasIndex(e => e.IlId, "IX_tbl_ilce_ilId");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever()
+                .HasColumnName("id");
+            entity.Property(e => e.IlId).HasColumnName("ilId");
+            entity.Property(e => e.IlceAdi)
+                .HasMaxLength(50)
+                .HasColumnName("ilceAdi");
+
+            entity.HasOne(d => d.Il).WithMany(p => p.TblIlces)
+                .HasForeignKey(d => d.IlId)
+                .HasConstraintName("FK__tbl_ilce__ilId__72C60C4A");
+        });
 
         modelBuilder.Entity<AppUser>(entity => entity.ToTable("AspNetUsers"));
         modelBuilder.Entity<AppRole>(entity => entity.ToTable("AspNetRoles"));
@@ -222,6 +265,22 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.StatusDisplayName).HasMaxLength(100);
             entity.Property(e => e.StatusKey).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<OrderShippingDetail>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__OrderShi__3214EC071AAE10DE");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.ShippingPrice).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TrackingNumber).HasMaxLength(100);
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderShippingDetails)
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_OrderShippingDetails_Orders");
         });
 
         modelBuilder.Entity<ReturnRequest>(entity =>

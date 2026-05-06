@@ -13,7 +13,9 @@ using System.Security.Claims;
 using System.Linq;
 
 using webBackend.Helpers;
+using Microsoft.Data.SqlClient;
 namespace webBackend.Controllers;
+using System.Data;
 
 
 
@@ -287,20 +289,69 @@ public class OrderController : Controller
                 finalZip = model.PostaKodu;
             }
 
+            // --- KARGO DOĞRULAMA VE HESAPLAMA (SP İLE) ---
+            var city = await _context.TblIls.FirstOrDefaultAsync(x => x.IlAdi == finalSehir);
+            // Not: District eşleşmesi için AdresSatiri kullanılmış, 
+            // eğer ilçeyi ayrı tutuyorsan burayı o değişkene göre güncellemelisin.
+            var district = await _context.TblIlces.FirstOrDefaultAsync(x => x.IlceAdi == finalAdres && x.IlId == city.Id);
+
+            if (city == null)
+            {
+                ModelState.AddModelError("", "Seçilen şehir sistemde doğrulanamadı.");
+                goto ReturnView;
+            }
+
+            
+            var pCartId = new SqlParameter("@CartId", cart.CartId);
+            var pCityId = new SqlParameter("@CityId", city.Id);
+            var pDistrictId = new SqlParameter("@DistrictId", district?.Id ?? (object)DBNull.Value);
+            var pCarrierId = new SqlParameter("@SelectedCarrierId", model.SelectedCarrierId);
+            var pOutPrice = new SqlParameter { 
+                ParameterName = "@FinalShippingPrice", 
+                SqlDbType = SqlDbType.Decimal, 
+                Direction = ParameterDirection.Output,
+                Precision = 18, Scale = 2 
+            };
+
+
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC [dbo].[sp_VerifyAndGetShippingPrice] @CartId, @CityId, @DistrictId, @SelectedCarrierId, @FinalShippingPrice OUTPUT",
+                pCartId, pCityId, pDistrictId, pCarrierId, pOutPrice);
+
+            decimal finalKargoUcreti = 0;
+            if (pOutPrice.Value != null && pOutPrice.Value != DBNull.Value)
+            {
+                finalKargoUcreti = Convert.ToDecimal(pOutPrice.Value);
+            }
+            else
+            {
+                finalKargoUcreti = 75; 
+            }
+
+            if (finalKargoUcreti == -1) {
+                ModelState.AddModelError("", "Seçilen kargo firması bu bölgeye hizmet verememektedir.");
+                goto ReturnView;
+            }
+
+            // Toplam tutarı güncelle (Sepet + Kargo)
+            double genelToplam = (double)cart.Toplam + (double)finalKargoUcreti;
+
+            // --- ÖDEME SÜRECİ ---
             ProcessPaymentResult payment;
 
-            if (cart.Toplam <= 0)
+            if (genelToplam <= 0)
             {
                 payment = new ProcessPaymentResult { Status = "success" };
             }
             else
             {
+                
                 payment = await ProcessPayment(model, cart, finalAd, finalSoyad, finalTelefon, finalSehir, finalAdres, finalZip);
             }
 
             if (payment.Status == "success")
             {
-                // 1. Siparişi Kaydet (Tüm zorunlu alanlar atanmalı - NULL hatasını önler)
+                // 1. Siparişi Kaydet
                 var order = new Order { 
                     Ad = finalAd,
                     Soyad = finalSoyad,
@@ -310,15 +361,25 @@ public class OrderController : Controller
                     Sehir = finalSehir,
                     AdresSatiri = finalAdres,
                     PostaKodu = finalZip,
-                    ToplamFiyat = (double)cart.Toplam, 
+                    ToplamFiyat = genelToplam, 
                     SiparisTarihi = DateTime.Now,
-                    StatusId = 2 // Onaylandı/Hazırlanıyor
+                    StatusId = 2 
                 };
 
                 _context.Orders.Add(order);
-                await _context.SaveChangesAsync(); // Burada save yaparak Order ID'yi oluşturuyoruz.
+                await _context.SaveChangesAsync(); 
 
-                // 2. Sipariş Kalemlerini (OrderItem) Tek Tek Ekle
+
+                var shippingDetail = new OrderShippingDetail 
+                {
+                    OrderId = order.Id, 
+                    CarrierId = model.SelectedCarrierId,
+                    ShippingPrice = finalKargoUcreti,
+                    CreatedAt = DateTime.Now
+                };
+                _context.OrderShippingDetails.Add(shippingDetail);
+
+                // 2. Sipariş Kalemlerini Ekle
                 foreach (var cartItem in cart.CartItems)
                 {
                     var product = await _context.Products
@@ -327,11 +388,9 @@ public class OrderController : Controller
 
                     var orderItem = new OrderItem
                     {
-                        OrderId = order.Id, // Az önce kaydedilen Sipariş ID'si
+                        OrderId = order.Id, 
                         UrunId = cartItem.UrunId,
                         Miktar = cartItem.Miktar,
-                        
-                        // Snapshot: Ürün silinse bile bu bilgiler kalır
                         ProductNameSnapshot = product?.ProductName ?? "Ürün Silinmiş",
                         ProductImageSnapshot = product?.ImageUrl ?? "/img/no-image.jpg",
                         PriceAtOrder = product?.Price ?? 0,
@@ -342,35 +401,101 @@ public class OrderController : Controller
                     _context.OrderItems.Add(orderItem);
                 }
 
-                // 3. Kalemleri Kaydet
                 await _context.SaveChangesAsync(); 
-
-                // 4. Sepeti Temizle
                 await _cartService.ClearCart();
                 return RedirectToAction("Completed", new { orderId = order.Id });
             }
 
             string customError = payment.ErrorMessage;
             if (customError != null && customError.Contains("basketItemPrice"))
-                customError = "Siparişinizdeki fiyat uyumsuzluğu nedeniyle işlem iptal edildi.";
+                customError = "Fiyat uyumsuzluğu nedeniyle işlem iptal edildi.";
                 
             ModelState.AddModelError("", customError ?? "Ödeme hatası oluştu.");
         }
 
         ReturnView:
         var illerList = await _context.TblIls.OrderBy(x => x.IlAdi).ToListAsync();
+        var carriers = await _context.Carriers.Where(x => x.IsActive == true).ToListAsync();
+        
         ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi", model.Sehir);
+        ViewBag.Carriers = new SelectList(carriers, "Id", "CarrierName", model.SelectedCarrierId);
         ViewBag.Cart = cart;
         
         return View(model);
     }
     
-    
-    
-    
-    
-    public ActionResult Completed(int orderId)
+    [HttpGet]
+    public async Task<JsonResult> GetDistricts(string cityName)
     {
+        var city = await _context.TblIls.FirstOrDefaultAsync(x => x.IlAdi == cityName);
+        if (city == null) return Json(new List<object>());
+        
+        var districts = await _context.TblIlces
+            .Where(x => x.IlId == city.Id)
+            .Select(x => new { id = x.IlceAdi, text = x.IlceAdi })
+            .ToListAsync();
+            
+        return Json(districts);
+    }
+
+
+    [HttpGet]
+public async Task<JsonResult> GetShippingPrice(int carrierId)
+{
+    var username = User.Identity?.Name;
+    var cart = await _cartService.GetCart(username!);
+
+    if (cart == null) return Json(new { success = false });
+
+    // Parametreleri tipleriyle birlikte (SqlDbType.Int) açıkça tanımlıyoruz
+    var pCartId = new SqlParameter("@CartId", SqlDbType.Int) { Value = cart.CartId };
+    var pCityId = new SqlParameter("@CityId", SqlDbType.Int) { Value = 0 }; 
+    var pDistrictId = new SqlParameter("@DistrictId", SqlDbType.Int) { Value = 0 };
+    var pCarrierId = new SqlParameter("@SelectedCarrierId", SqlDbType.Int) { Value = carrierId };
+    
+    var pOutPrice = new SqlParameter("@FinalShippingPrice", SqlDbType.Decimal) 
+    { 
+        Direction = ParameterDirection.Output,
+        Precision = 18, 
+        Scale = 2 
+    };
+
+    // Açıkça tanımladığımız parametreleri ExecuteSqlRawAsync içine veriyoruz
+    await _context.Database.ExecuteSqlRawAsync(
+        "EXEC [dbo].[sp_VerifyAndGetShippingPrice] @CartId, @CityId, @DistrictId, @SelectedCarrierId, @FinalShippingPrice OUTPUT",
+        pCartId, 
+        pCityId, 
+        pDistrictId, 
+        pCarrierId, 
+        pOutPrice);
+
+    decimal price = (pOutPrice.Value != DBNull.Value) ? (decimal)pOutPrice.Value : 0;
+
+    return Json(new { 
+        success = true, 
+        shippingPrice = price, 
+        totalPrice = (decimal)cart.Toplam + price 
+    });
+}
+    
+    
+    
+   public async Task<ActionResult> Completed(int orderId)
+    {
+        var username = User.Identity?.Name;
+
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Id == orderId && o.Username == username);
+
+        if (order == null)
+        {
+            return RedirectToAction("Index", "Home");
+        }
+
+        ViewBag.ShippingInfo = await _context.OrderShippingDetails
+            .FirstOrDefaultAsync(s => s.OrderId == orderId);
+
         return View("Completed", orderId);
     }
 
@@ -439,114 +564,113 @@ public class OrderController : Controller
     string finalSehir, 
     string finalAdres, 
     string finalZip)
-
+{
+    // 1. İyzipay Seçenekleri (BaseUrl'e dikkat)
+    Options options = new Options
     {
-        Options options = new Options
-        {
-            ApiKey = _configuration["PaymentAPI:APIKey"],
-            SecretKey = _configuration["PaymentAPI:SecretKey"],
-            BaseUrl = "https://sandbox-api.iyzipay.com"
-        };
+        ApiKey = _configuration["PaymentAPI:APIKey"],
+        SecretKey = _configuration["PaymentAPI:SecretKey"],
+        BaseUrl = "https://sandbox-api.iyzipay.com" 
+    };
 
-        CreatePaymentRequest request = new CreatePaymentRequest
-        {
-            Locale = Locale.TR.ToString(),
-            ConversationId = Guid.NewGuid().ToString(),
-            Price = cart.araToplam.ToString("F2").Replace(",", "."),
-            PaidPrice = cart.araToplam.ToString("F2").Replace(",", "."),
-            Currency = Currency.TRY.ToString(),
-            Installment = 1,
-            BasketId = "B" + Guid.NewGuid().ToString().Substring(0, 5),
-            PaymentChannel = PaymentChannel.WEB.ToString(),
-            PaymentGroup = PaymentGroup.PRODUCT.ToString()
-        };
+    // 2. Tutar Hesaplama (Kargo Dahil Genel Toplam)
+    // cart.Toplam'ın kargo eklenmiş son hal olduğunu varsayıyoruz
+    string totalFormatted = cart.Toplam.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
 
-        PaymentCard paymentCard = new PaymentCard
-        {
-            CardHolderName = model.CartName,
-            CardNumber = model.CartNumber,
-            ExpireMonth = model.CartExpirationMonth,
-            ExpireYear = model.CartExpirationYear,
-            Cvc = model.CartCVV,
-            RegisterCard = 0
-        };
-        request.PaymentCard = paymentCard;
+    CreatePaymentRequest request = new CreatePaymentRequest
+    {
+        Locale = Locale.TR.ToString(),
+        ConversationId = Guid.NewGuid().ToString(),
+        Price = totalFormatted,
+        PaidPrice = totalFormatted,
+        Currency = Currency.TRY.ToString(),
+        Installment = 1,
+        BasketId = "B" + Guid.NewGuid().ToString().Substring(0, 5),
+        PaymentChannel = PaymentChannel.WEB.ToString(),
+        PaymentGroup = PaymentGroup.PRODUCT.ToString()
+    };
 
-        string currentAd, currentSoyad, currentTelefon, currentZip, currentSehir, currentAdres;
+    // 3. Kart Bilgileri
+    request.PaymentCard = new PaymentCard
+    {
+        CardHolderName = model.CartName,
+        CardNumber = model.CartNumber,
+        ExpireMonth = model.CartExpirationMonth,
+        ExpireYear = model.CartExpirationYear,
+        Cvc = model.CartCVV,
+        RegisterCard = 0
+    };
 
-        if (model.UseDefaultAddress && model.DefaultAddress != null)
-        {
-            currentAd = model.DefaultAddress.FirstName;
-            currentSoyad = model.DefaultAddress.LastName;
-            currentTelefon = model.DefaultAddress.Phone;
-            currentZip = model.DefaultAddress.ZipCode ?? "34000"; 
-            currentSehir = model.DefaultAddress.City;
-            currentAdres = model.DefaultAddress.AddressDetail;
-        }
-        else
-        {
-            currentAd = model.Ad;
-            currentSoyad = model.Soyad;
-            currentTelefon = model.Telefon;
-            currentZip = model.PostaKodu;
-            currentSehir = model.Sehir;
-            currentAdres = model.AdresSatiri;
-        }
+    // 4. Buyer (Alıcı) Bilgileri
+    request.Buyer = new Buyer
+    {
+        Id = "BY" + (User.Identity?.Name ?? "Guest"), 
+        Name = finalAd,
+        Surname = finalSoyad,
+        GsmNumber = finalTelefon,
+        Email = model.Email ?? "test@test.com",
+        IdentityNumber = "11111111111", 
+        RegistrationAddress = finalAdres,
+        Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+        City = finalSehir,
+        Country = "Turkey",
+        ZipCode = finalZip
+    };
 
-        // Iyzico Buyer Nesnesi oluşturulurken
-        Buyer buyer = new Buyer
-        {
-            Id = "BY" +  User.Identity?.Name, 
-            Name = currentAd,
-            Surname = currentSoyad,
-            GsmNumber = currentTelefon,
-            Email = model.Email,
-            IdentityNumber = "11111111111", 
-            RegistrationAddress = currentAdres,
-            Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
-            City = currentSehir,
-            Country = "Turkey",
-            ZipCode = currentZip
-        };
-        request.Buyer = buyer;
+    // 5. Adres Bilgileri
+    Address shippingAddress = new Address
+    {
+        ContactName = $"{finalAd} {finalSoyad}", 
+        City = finalSehir,
+        Country = "Turkey",
+        Description = finalAdres,
+        ZipCode = finalZip
+    };
+    request.ShippingAddress = shippingAddress;
+    request.BillingAddress = shippingAddress;
 
-        Address address = new Address
-        {
-            
-            ContactName = $"{currentAd} {currentSoyad}", 
-            City = currentSehir,
-            Country = "Turkey",
-            Description = currentAdres,
-            ZipCode = currentZip
-        };
-        request.ShippingAddress = address;
-        request.BillingAddress = address;
+    // 6. Sepet Kalemleri (Ürünler + Kargo)
+    List<BasketItem> basketItems = new List<BasketItem>();
 
-        List<BasketItem> basketItems = new List<BasketItem>();
-
-        foreach (var item in cart.CartItems)
+    foreach (var item in cart.CartItems)
+    {
+        if (item.Urun.Price > 0) 
         {
-            
-            if (item.Urun.Price > 0) 
+            basketItems.Add(new BasketItem
             {
-                BasketItem basketItem = new BasketItem();
-                basketItem.Id = item.UrunId.ToString();
-                basketItem.Name = item.Urun.ProductName;
-                basketItem.Category1 = "Genel";
-                basketItem.ItemType = BasketItemType.PHYSICAL.ToString();
-                basketItem.Price = item.Urun.Price.ToString().Replace(",", ".");
-                basketItems.Add(basketItem);
-            }
+                Id = item.UrunId.ToString(),
+                Name = item.Urun.ProductName,
+                Category1 = "Genel",
+                ItemType = BasketItemType.PHYSICAL.ToString(),
+                Price = item.Urun.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)
+            });
         }
-        request.BasketItems = basketItems;
-
-        return await Payment.Create(request, options);
     }
 
+    // KRİTİK: Kargo ücretini sepet kalemi olarak ekle (Fiyat dengesi için)
+    decimal kargoUcreti = (decimal)(cart.Toplam - cart.araToplam);
+    if (kargoUcreti > 0)
+    {
+        basketItems.Add(new BasketItem
+        {
+            Id = "SHIPPING",
+            Name = "Kargo Ücreti",
+            Category1 = "Lojistik",
+            ItemType = BasketItemType.VIRTUAL.ToString(),
+            Price = kargoUcreti.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)
+        });
+    }
 
-    [HttpPost]
-    [Authorize(Policy = "Order.Edit")]
-    [ValidateAntiForgeryToken] 
+    request.BasketItems = basketItems;
+
+    // 7. Ödeme Oluşturma
+    return await Payment.Create(request, options);
+}
+
+
+        [HttpPost]
+        [Authorize(Policy = "Order.Edit")]
+        [ValidateAntiForgeryToken] 
         public async Task<IActionResult> UpdateStatus(int orderId, int newStatusId)
         {
             // OrderItems ve Urun bilgilerini de çekmemiz gerekiyor (Stok güncellemesi için)

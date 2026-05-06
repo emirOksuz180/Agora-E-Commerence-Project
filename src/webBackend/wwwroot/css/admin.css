@@ -28,3 +28,17 @@
   border-bottom: 2px solid #4e73df;
   transition: all 2s ease-in;
 }
+
+/* Navbar öğelerinin tek satırda kalmasını sağlar */
+.navbar-nav .nav-link {
+    white-space: nowrap; /* Metnin alt satıra geçmesini engeller */
+    padding-left: 0.75rem !important; /* Yan boşlukları biraz daraltarak yer kazandırır */
+    padding-right: 0.75rem !important;
+}
+
+/* Çok küçük ekranlarda veya menü kalabalıklaştığında fontu optimize eder */
+@media (max-width: 1200px) {
+    .navbar-nav .nav-link {
+        font-size: 0.9rem;
+    }
+}

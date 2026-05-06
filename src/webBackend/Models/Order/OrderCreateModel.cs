@@ -60,10 +60,12 @@ public class OrderCreateModel
     [RegularExpression(@"^[0-9]{3,4}$", ErrorMessage = "CVV 3 veya 4 haneli olmalıdır.")]
     public string CartCVV { get; set; } = null!;
 
-    // --- SİSTEM BİLGİLERİ ---
+    
     public UserAddress? DefaultAddress { get; set; }
     public bool UseDefaultAddress { get; set; } = true;
-    public int? DefaultAddressId { get; set; } // Önemli: DB'den adresi çekmek için ID gerekebilir
+    public int? DefaultAddressId { get; set; } // DB'den adresi çekmek için ID gerekebilir
+
+    public int SelectedCarrierId { get; set; }
 }
 
 

@@ -1,0 +1,60 @@
+@model IEnumerable<webBackend.Models.TblIl>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Şehir - Lojistik Bölge Eşleştirmesi</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Şehir</th>
+                        <th>Mevcut Bölge</th>
+                        <th>İşlem (Hızlı Değiştir)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var il in Model)
+                    {
+                        <tr>
+                            <td><strong>@il.IlAdi</strong></td>
+                            <td id="region-name-@il.Id">
+                                @(il.Region?.RegionName ?? "Atanmamış")
+                            </td>
+                            <td>
+                                <select class="form-control select-region" data-il-id="@il.Id">
+                                    <option value="">Bölge Seçin...</option>
+                                    @foreach (var r in ViewBag.Bolgeler)
+                                    {
+                                        <option value="@r.Id" selected="@(il.RegionId == r.Id)">@r.RegionName</option>
+                                    }
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).on('change', '.select-region', function () {
+            var ilId = $(this).data('il-id');
+            var regionId = $(this).val();
+            var selectElement = $(this);
+
+            $.post('/Lojistik/BolgeGuncelle', { ilId: ilId, regionId: regionId }, function (res) {
+                if (res.success) {
+                    // Opsiyonel: Başarılı mesajı verilebilir (Toastr vb.)
+                    var newRegionName = selectElement.find("option:selected").text();
+                    $("#region-name-" + ilId).text(newRegionName);
+                } else {
+                    alert("Güncelleme sırasında hata oluştu!");
+                }
+            });
+        });
+    </script>
+}

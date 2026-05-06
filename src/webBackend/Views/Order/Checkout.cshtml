@@ -3,7 +3,6 @@
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
-    // Task 3: Model null gelirse sayfanın patlamasını engellemek için güvenlik bariyeri
     if (Model == null)
     {
         <div class="container mt-5">
@@ -79,7 +78,7 @@
                                 </div>
                             </div>
 
-                            <div class="row-mb3">
+                            <div class="row mb-3">
                                 <div class="col">
                                     <label asp-for="Email" class="form-label fw-bold small text-secondary">E-posta Adresi</label>
                                     <input asp-for="Email" type="email" class="form-control" placeholder="Örn: ornek@mail.com">
@@ -109,8 +108,8 @@
 
                             <div class="row">
                                 <div class="col">
-                                    <label asp-for="AdresSatiri" class="form-label fw-bold small text-secondary">Adres Detayı</label>
-                                    <textarea asp-for="AdresSatiri" class="form-control" rows="3" placeholder="Mahalle, Sokak, Kapı No..."></textarea>
+                                    <label asp-for="AdresSatiri" class="form-label fw-bold small text-secondary">Adres Detayı (İlçe/Mahalle)</label>
+                                    <textarea asp-for="AdresSatiri" id="AdresSatiri" class="form-control" rows="3" placeholder="Mahalle, Sokak, Kapı No..."></textarea>
                                     <span asp-validation-for="AdresSatiri" class="text-danger small"></span>
                                 </div>
                             </div>
@@ -145,7 +144,6 @@
                                             <span class="input-group-text bg-white border-end-0">
                                                 <i class="fa-solid fa-credit-card text-muted" id="card-icon"></i>
                                             </span>
-                                            @* Task 2: Kart numarası girişi *@
                                             <input asp-for="CartNumber" id="CartNumber" class="form-control border-start-0" placeholder="0000 0000 0000 0000" maxlength="19">
                                         </div>
                                         <span asp-validation-for="CartNumber" id="luhn-error" class="text-danger small"></span>
@@ -183,11 +181,10 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-secondary">Kargo Firması Seçin</label>
-                                <select id="CarrierSelector" name="CarrierId" class="form-select" required>
+                                <select id="SelectedCarrierId" asp-for="SelectedCarrierId" class="form-select" required>
                                     <option value="">Seçiniz...</option>
                                     @if (ViewBag.Carriers != null)
                                     {
-                                        // SelectList olarak gönderdiğimiz için SelectListItem olarak döneriz
                                         foreach (var carrier in (SelectList)ViewBag.Carriers)
                                         {
                                             <option value="@carrier.Value">@carrier.Text</option>
@@ -200,25 +197,26 @@
 
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-secondary small">Ara Toplam</span>
-                                <span id="subtotal" class="fw-bold">@ViewBag.Cart?.Toplam.ToString("C2")</span>
+                                <span id="subtotal" class="fw-bold">
+                                    @ViewBag.Cart?.Toplam.ToString("C2")
+                                </span>
                             </div>
 
-                            <div class="d-flex justify-content-between mb-2 text-primary">
-                                <span class="small">Kargo Ücreti</span>
-                                <span id="shipping-price" class="fw-bold">0,00 ₺</span>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-secondary small">Kargo Ücreti</span>
+                                <strong id="shipping-amount" class="text-dark">0,00 TL</strong>
                             </div>
 
                             <div class="d-flex justify-content-between mb-3 border-top pt-2">
                                 <span class="fw-bold text-dark">Genel Toplam</span>
-                                <span id="grand-total" class="fs-4 fw-bold text-success">@ViewBag.Cart?.Toplam.ToString("C2")</span>
+                                <span id="grand-total" class="fs-4 fw-bold text-success">
+                                    @ViewBag.Cart?.Toplam.ToString("C2")
+                                </span>
                             </div>
 
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">Ödemeyi Tamamla</button>
                             </div>
-                            <p class="text-center text-muted x-small mt-3 mb-0" style="font-size: 0.7rem;">
-                                <i class="fa fa-lock me-1"></i> 256-bit SSL ile güvenli ödeme
-                            </p>
                         </div>
                     </div>
                 </div>
@@ -231,55 +229,39 @@
     <script>
         $(document).ready(function () {
             
-            // --- ADRES TOGGLE MANTIGI ---
+            // --- ADRES DEĞİŞTİRME MANTIĞI ---
             $('#chkUseDefault').on('change', function() {
-            const isChecked = this.checked;
-            const $newAddressSection = $('#deliveryAddressSection');
-            
-            if(isChecked) {
-                $newAddressSection.slideUp(300);
-                // ÖNEMLİ: Validasyonun bu alanları görmemesi için 'disabled' yapıyoruz
-                $newAddressSection.find('input, select, textarea').prop('disabled', true);
-                // Hata mesajlarını temizle
-                $newAddressSection.find('.field-validation-error').empty();
-                $newAddressSection.find('.input-validation-error').removeClass('input-validation-error');
-            } else {
-                $newAddressSection.slideDown(300);
-                $newAddressSection.find('input, select, textarea').prop('disabled', false);
-            }
-        });
+                const isChecked = this.checked;
+                const $newAddressSection = $('#deliveryAddressSection');
+                
+                if(isChecked) {
+                    $newAddressSection.slideUp(300);
+                    $newAddressSection.find('input, select, textarea').prop('disabled', true);
+                } else {
+                    $newAddressSection.slideDown(300);
+                    $newAddressSection.find('input, select, textarea').prop('disabled', false);
+                }
+                calculateShipping(); // Adres tipi değişince kargoyu yeniden hesapla
+            });
 
-        // FORM SUBMIT OLURKEN SON KONTROL
-        $('form').on('submit', function (e) {
-            if ($('#chkUseDefault').is(':checked')) {
-                // Eğer default adres seçiliyse, yeni adres kısmındaki validation kurallarını görmezden gel
-                $(this).validate().settings.ignore = "#deliveryAddressSection *";
-            } else {
-                // Yeni adres girilecekse hiçbir şeyi ignore etme
-                $(this).validate().settings.ignore = ":hidden";
-            }
-        });
-            // --- TASK 2: KART BİLGİLERİ MASKELİ GİRİŞ VE LUHN ---
+            // --- KART NUMARASI VE LUHN KONTROLÜ ---
             const cardInput = $('#CartNumber');
             const cardIcon = $('#card-icon');
             const luhnError = $('#luhn-error');
 
             cardInput.on('input', function (e) {
-                let value = e.target.value.replace(/\D/g, ''); // Sadece rakamlar
-                let formattedValue = value.replace(/(\d{4})(?=\d)/g, '$1 '); // 4'erli boşluk
+                let value = e.target.value.replace(/\D/g, ''); 
+                let formattedValue = value.replace(/(\d{4})(?=\d)/g, '$1 '); 
                 $(this).val(formattedValue);
 
-                // Kart Tipi Belirleme (Visa/Master/Troy)
-                cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
                 if (value.startsWith('4')) {
                     cardIcon.attr('class', 'fa-brands fa-cc-visa text-primary');
                 } else if (/^(5[1-5]|2[2-7])/.test(value)) {
                     cardIcon.attr('class', 'fa-brands fa-cc-mastercard text-danger');
-                } else if (value.startsWith('9792') || value.startsWith('65')) {
-                    cardIcon.attr('class', 'fa-solid fa-credit-card text-warning'); // Troy Temsili
+                } else {
+                    cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
                 }
 
-                // Luhn Algoritması Kontrolü
                 if (value.length >= 13) {
                     if (checkLuhn(value)) {
                         luhnError.hide();
@@ -304,35 +286,62 @@
                 return sum % 10 === 0;
             }
 
-            // --- KARGO HESAPLAMA MANTIGI ---
-            $('#Sehir, #CarrierSelector').on('change', function() {
+            // --- KARGO HESAPLAMA MANTIĞI ---
+            $(document).on('change', '#SelectedCarrierId, #Sehir, #AdresSatiri', function() {
                 calculateShipping();
             });
 
             function calculateShipping() {
-                const carrierId = $('#CarrierSelector').val();
+                const carrierId = $('#SelectedCarrierId').val();
                 let city = "";
+                let district = "";
 
                 if($('#chkUseDefault').is(':checked')) {
                     city = "@Model.DefaultAddress?.City";
+                    district = "@Model.DefaultAddress?.District";
                 } else {
                     city = $('#Sehir').val();
+                    district = $('#AdresSatiri').val();
                 }
-                
+
                 if (carrierId && city) {
-                    $.get(`/api/ShippingApi/calculate?carrierId=${carrierId}&cityName=${city}`, function(data) {
-                        $('#shipping-price').text(data.formattedPrice);
-                        
-                        // Toplamı güncelle (Küsürat düzeltmesi için string replace kullanıldı)
-                        const subtotalText = "@(ViewBag.Cart?.Toplam ?? 0)".replace(',', '.');
-                        const subtotal = parseFloat(subtotalText);
-                        const shipping = data.shippingPrice;
-                        const grandTotal = subtotal + shipping;
-                        
-                        $('#grand-total').text(grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " ₺");
+                    $.get('/Order/GetShippingPrice', { 
+                        carrierId: carrierId, 
+                        city: city, 
+                        district: district 
+                    }, function (res) {
+                        if (res.success) {
+                            $('#shipping-amount').text(res.shippingPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL');
+                            $('#grand-total').text(res.totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL');
+                        } else {
+                            resetPrices();
+                        }
+                    }).fail(function() {
+                        resetPrices();
                     });
+                } else {
+                    resetPrices();
                 }
             }
+
+            function resetPrices() {
+                $('#shipping-amount').text('0,00 TL');
+                $('#grand-total').text($('#subtotal').text());
+            }
+
+            // Sayfa açılışında kargo seçiliyse tetikle
+            if ($('#SelectedCarrierId').val()) {
+                calculateShipping();
+            }
+
+            // Form Submit Validasyonu
+            $('#checkoutForm').on('submit', function (e) {
+                if ($('#chkUseDefault').is(':checked')) {
+                    $(this).validate().settings.ignore = "#deliveryAddressSection *";
+                } else {
+                    $(this).validate().settings.ignore = ":hidden";
+                }
+            });
         });
     </script>
 }

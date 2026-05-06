@@ -1,0 +1,155 @@
+@model IEnumerable<webBackend.Models.CarrierDistrictExclusion>
+
+@{
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Kargo İstisna Yönetimi</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Yeni Kısıtlama Ekle</h6>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <label>Kargo Firması</label>
+                    <select id="carrierSelect" class="form-control">
+                        @foreach (var carrier in ViewBag.Carriers)
+                        {
+                            <option value="@carrier.Id">@carrier.CarrierName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>İl</label>
+                    <select id="citySelect" class="form-control">
+                        <option value="">İl Seçiniz...</option>
+                        @foreach (var city in ViewBag.Cities)
+                        {
+                            <option value="@city.Id">@city.IlAdi</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>İlçe (Kısıtlanacak Yer)</label>
+                    <select id="districtSelect" class="form-control" disabled>
+                        <option value="">Önce İl Seçin...</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button id="btnSave" class="btn btn-danger btn-block">
+                        <i class="fas fa-ban"></i> Kargo Gönderimini Yasakla
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-dark">Aktif Kısıtlamalar</h6>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped" id="exclusionTable">
+                <thead>
+                    <tr>
+                        <th>Kargo Firması</th>
+                        <th>İl / İlçe</th>
+                        <th>Durum</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td><strong>@item.Carrier.CarrierName</strong></td>
+                            <td>
+                                @item.City?.IlAdi / 
+                                @if (item.DistrictId == null)
+                                {
+                                    <span class="badge badge-warning text-dark">Tüm İlçeler (İl Geneli)</span>
+                                }
+                                else
+                                {
+                                    @item.District?.IlceAdi
+                                }
+                            </td>
+                            <td><span class="badge badge-danger">Gönderim Yasak</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger btn-delete" data-id="@item.Id">
+                                    <i class="fas fa-trash"></i> Kaldır
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // İl seçildiğinde ilçeleri getir
+            $('#citySelect').change(function () {
+                var cityId = $(this).val();
+                var districtSelect = $('#districtSelect');
+
+                if (cityId) {
+                    $.getJSON('/Lojistik/GetDistricts', { cityId: cityId }, function (data) {
+                        // İl seçildiğinde ilk seçenek "Tüm İlçe" (0 değeri) olsun
+                        var options = '<option value="0">--- TÜM İLÇELER (İl Geneli) ---</option>';
+                        $.each(data, function (i, item) {
+                            options += `<option value="${item.id}">${item.ilceAdi}</option>`;
+                        });
+                        districtSelect.html(options).prop('disabled', false);
+                    });
+                } else {
+                    districtSelect.html('<option value="">Önce İl Seçin...</option>').prop('disabled', true);
+                }
+            });
+
+            // Kaydetme İşlemi
+            $('#btnSave').click(function () {
+                var cId = $('#carrierSelect').val();
+                var cityId = $('#citySelect').val();
+                var dId = $('#districtSelect').val();
+
+                if (!cityId) { alert("Lütfen bir il seçin!"); return; }
+                
+                // dId boş gelirse (seçilmemişse) engelle, ama 0 ise (Tüm il) kabul et
+                if (dId === "" || dId === null) { alert("Lütfen bir ilçe seçin!"); return; }
+
+                $.post('/Lojistik/IstisnaEkle', { carrierId: cId, cityId: cityId, districtId: dId }, function (res) {
+                    if (res.success) {
+                        location.reload(); 
+                    } else {
+                        alert(res.message || "Bir hata oluştu.");
+                    }
+                });
+            });
+
+            // Silme İşlemi
+            $(document).on('click', '.btn-delete', function () {
+                var id = $(this).data('id');
+                var button = $(this);
+
+                if (confirm("Bu kargo kısıtlamasını kaldırmak istediğinize emin misiniz?")) {
+                    $.post('/Lojistik/IstisnaKaldir', { id: id }, function (res) {
+                        if (res.success) {
+                            button.closest('tr').fadeOut(500, function() {
+                                $(this).remove();
+                            });
+                        } else {
+                            alert(res.message || "Silme işlemi başarısız.");
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+}

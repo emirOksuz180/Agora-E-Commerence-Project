@@ -11,7 +11,9 @@ public partial class ShippingRegion
 
     public bool? IsActive { get; set; }
 
+    public virtual ICollection<CarrierRegion> CarrierRegions { get; set; } = new List<CarrierRegion>();
+
     public virtual ICollection<ShippingRate> ShippingRates { get; set; } = new List<ShippingRate>();
 
-    public virtual ICollection<CarrierRegion> CarrierRegions { get; set; } = new List<CarrierRegion>();
+    public virtual ICollection<TblIl> TblIls { get; set; } = new List<TblIl>();
 }

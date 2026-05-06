@@ -64,4 +64,6 @@ public partial class Order
     public virtual ShippingRate? ShippingRate { get; set; }
 
     public virtual OrderStatus? Status { get; set; }
+
+    public virtual ICollection<OrderShippingDetail> OrderShippingDetails { get; set; } = new List<OrderShippingDetail>();
 }
