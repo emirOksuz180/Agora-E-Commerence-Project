@@ -23,6 +23,8 @@ public partial class OrderItem
 
     public string? ProductCodeSnapshot { get; set; }
 
+    public string? PaymentTransactionId { get; set; }
+
     public virtual Order Order { get; set; } = null!;
 
     public virtual Product Urun { get; set; } = null!;

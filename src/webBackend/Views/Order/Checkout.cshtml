@@ -1,5 +1,7 @@
 @model OrderCreateModel
 
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
 @{
     Layout = "~/Views/Shared/_SiteLayout.cshtml";
 
@@ -7,258 +9,564 @@
     {
         <div class="container mt-5">
             <div class="alert alert-warning shadow-sm">
-                <i class="fa fa-exclamation-triangle me-2"></i> Sipariş bilgileri yüklenemedi. Lütfen sepetinize dönüp tekrar deneyin.
+                <i class="fa fa-exclamation-triangle me-2"></i>
+                Sipariş bilgileri yüklenemedi. Lütfen sepetinize dönüp tekrar deneyin.
                 <a href="/Cart" class="alert-link">Sepete Dön</a>
             </div>
         </div>
+
         return;
     }
 }
 
 @section Bar {
-    <section class="bg-primary p-3">
+    <section class="bg-primary py-3 shadow-sm">
         <div class="container">
-            <nav>
+            <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="/" class="text-white">Anasayfa</a></li>
-                    <li class="breadcrumb-item"><a href="/Account/Orders" class="text-white">Siparişlerim</a></li>
+                    <li class="breadcrumb-item">
+                        <a href="/" class="text-white text-decoration-none">
+                            Anasayfa
+                        </a>
+                    </li>
+
+                    <li class="breadcrumb-item">
+                        <a href="/Account/Orders" class="text-white text-decoration-none">
+                            Siparişlerim
+                        </a>
+                    </li>
+
+                    <li class="breadcrumb-item active text-white" aria-current="page">
+                        Checkout
+                    </li>
                 </ol>
             </nav>
         </div>
     </section>
 }
 
-<section class="mt-3">
+<section class="mt-4 mb-5">
     <div class="container">
+
         <form method="post" id="checkoutForm">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <div class="row">
-                <div class="col-md-8">
+            <div asp-validation-summary="ModelOnly"
+                 class="alert alert-danger shadow-sm">
+            </div>
 
-                    @* Varsayılan Adres Bölümü *@
+            <div class="row g-4">
+
+                <!-- SOL PANEL -->
+                <div class="col-lg-8">
+
+                    @* Varsayılan Adres *@
                     @if (Model.DefaultAddress != null)
                     {
-                        <div class="card mb-3 shadow-sm border-primary" id="defaultAddressCard">
+                        <div class="card border-primary shadow-sm mb-4"
+                             id="defaultAddressCard">
+
                             <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="text-primary mb-0 fw-bold">
-                                        <i class="fa-solid fa-map-location-dot me-2"></i> @Model.DefaultAddress.AddressTitle (Varsayılan)
-                                    </h6>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" asp-for="UseDefaultAddress" id="chkUseDefault">
-                                        <label class="form-check-label small fw-bold" for="chkUseDefault">Bu adresi kullan</label>
+
+                                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+
+                                    <div>
+                                        <h5 class="text-primary fw-bold mb-2">
+                                            <i class="fa-solid fa-location-dot me-2"></i>
+                                            @Model.DefaultAddress.AddressTitle
+                                        </h5>
+
+                                        <div class="small text-muted">
+
+                                            <div class="mb-1">
+                                                <strong>Alıcı:</strong>
+                                                @Model.DefaultAddress.FirstName
+                                                @Model.DefaultAddress.LastName
+                                            </div>
+
+                                            <div class="mb-1">
+                                                <strong>Adres:</strong>
+                                                @Model.DefaultAddress.AddressDetail
+                                            </div>
+
+                                            <div>
+                                                <strong>Konum:</strong>
+                                                @Model.DefaultAddress.District /
+                                                @Model.DefaultAddress.City
+                                            </div>
+
+                                        </div>
                                     </div>
+
+                                    <div class="form-check form-switch mt-1">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               asp-for="UseDefaultAddress"
+                                               id="chkUseDefault">
+
+                                        <label class="form-check-label fw-semibold small"
+                                               for="chkUseDefault">
+                                            Bu adresi kullan
+                                        </label>
+                                    </div>
+
                                 </div>
-                                <div id="defaultAddressDetail" class="small text-muted">
-                                    <p class="mb-1"><strong>Alıcı:</strong> @Model.DefaultAddress.FirstName @Model.DefaultAddress.LastName</p>
-                                    <p class="mb-1"><strong>Adres:</strong> @Model.DefaultAddress.AddressDetail</p>
-                                    <p class="mb-0"><strong>Bölge:</strong> @Model.DefaultAddress.District / @Model.DefaultAddress.City</p>
-                                </div>
+
                             </div>
                         </div>
                     }
 
-                    @* Teslimat Bilgileri Formu (Yeni Adres) *@
-                    <div class="card mb-3 shadow-sm border-0" id="deliveryAddressSection" style="@(Model.DefaultAddress != null ? "display:none;" : "")">
-                        <div class="card-header bg-white py-3 border-bottom">
-                            <h2 class="h5 mb-0 fw-bold text-dark">Teslimat Adresi Bilgileri</h2>
+                    @* Teslimat Adresi *@
+                    <div class="card border-0 shadow-sm mb-4"
+                         id="deliveryAddressSection"
+                         style="@(Model.DefaultAddress != null ? "display:none;" : "")">
+
+                        <div class="card-header bg-white border-bottom py-3">
+                            <h2 class="h5 fw-bold mb-0">
+                                Teslimat Adresi Bilgileri
+                            </h2>
                         </div>
+
                         <div class="card-body">
-                            <div class="row mb-3">
+
+                            <div class="row g-3 mb-3">
+
                                 <div class="col-md-6">
-                                    <label asp-for="Ad" class="form-label fw-bold">Ad</label>
-                                    <input asp-for="Ad" class="form-control" placeholder="Adınız" />
-                                    <span asp-validation-for="Ad" class="text-danger small"></span>
+                                    <label asp-for="Ad" class="form-label fw-semibold">
+                                        Ad
+                                    </label>
+
+                                    <input asp-for="Ad"
+                                           class="form-control"
+                                           placeholder="Adınız">
+
+                                    <span asp-validation-for="Ad"
+                                          class="text-danger small"></span>
                                 </div>
+
                                 <div class="col-md-6">
-                                    <label asp-for="Soyad" class="form-label fw-bold">Soyad</label>
-                                    <input asp-for="Soyad" class="form-control" placeholder="Soyadınız" />
-                                    <span asp-validation-for="Soyad" class="text-danger small"></span>
+                                    <label asp-for="Soyad" class="form-label fw-semibold">
+                                        Soyad
+                                    </label>
+
+                                    <input asp-for="Soyad"
+                                           class="form-control"
+                                           placeholder="Soyadınız">
+
+                                    <span asp-validation-for="Soyad"
+                                          class="text-danger small"></span>
                                 </div>
+
                             </div>
 
-                            <div class="row mb-3">
-                                <div class="col">
-                                    <label asp-for="Email" class="form-label fw-bold small text-secondary">E-posta Adresi</label>
-                                    <input asp-for="Email" type="email" class="form-control" placeholder="Örn: ornek@mail.com">
-                                    <span asp-validation-for="Email" class="text-danger small"></span>
-                                </div>
+                            <div class="mb-3">
+
+                                <label asp-for="Email"
+                                       class="form-label fw-semibold">
+                                    E-Posta Adresi
+                                </label>
+
+                                <input asp-for="Email"
+                                       type="email"
+                                       class="form-control"
+                                       placeholder="ornek@mail.com">
+
+                                <span asp-validation-for="Email"
+                                      class="text-danger small"></span>
+
                             </div>
 
-                            <div class="row mb-3">
+                            <div class="row g-3 mb-3">
+
                                 <div class="col-md-4">
-                                    <label asp-for="Sehir" class="form-label fw-bold small text-secondary">Şehir</label>
-                                    <select asp-for="Sehir" id="Sehir" asp-items="@(ViewBag.Iller as SelectList)" class="form-select">
-                                        <option value="">Şehir Seçiniz...</option>
+
+                                    <label asp-for="Sehir"
+                                           class="form-label fw-semibold">
+                                        Şehir
+                                    </label>
+
+                                    <select asp-for="Sehir"
+                                            id="ddlSehir"
+                                            asp-items="@(ViewBag.Iller as SelectList)"
+                                            class="form-select">
+
+                                        <option value="">
+                                            Şehir Seçiniz...
+                                        </option>
+
                                     </select>
-                                    <span asp-validation-for="Sehir" class="text-danger small"></span>
+
+                                    <span asp-validation-for="Sehir"
+                                          class="text-danger small"></span>
+
                                 </div>
+
+                                @* <div class="col-md-4">
+
+                                    <label asp-for="Ilce"
+                                           class="form-label fw-semibold">
+                                        İlçe
+                                    </label>
+
+                                    <select asp-for="Ilce"
+                                            id="ddlIlce"
+                                            asp-items="@(ViewBag.Ilceler as SelectList)"
+                                            class="form-select">
+
+                                        <option value="">
+                                            Önce Şehir Seçiniz
+                                        </option>
+
+                                    </select>
+
+                                    <span asp-validation-for="Ilce"
+                                          class="text-danger small"></span>
+
+                                </div> *@
+
                                 <div class="col-md-4">
-                                    <label asp-for="Telefon" class="form-label fw-bold small text-secondary">Telefon</label>
-                                    <input asp-for="Telefon" class="form-control" placeholder="5xx xxx xxxx">
-                                    <span asp-validation-for="Telefon" class="text-danger small"></span>
+
+                                    <label asp-for="Telefon"
+                                           class="form-label fw-semibold">
+                                        Telefon
+                                    </label>
+
+                                    <input asp-for="Telefon"
+                                           class="form-control"
+                                           placeholder="5xx xxx xxxx">
+
+                                    <span asp-validation-for="Telefon"
+                                          class="text-danger small"></span>
+
                                 </div>
-                                <div class="col-md-4">
-                                    <label asp-for="PostaKodu" class="form-label fw-bold small text-secondary">Posta Kodu</label>
-                                    <input asp-for="PostaKodu" class="form-control" placeholder="34000">
-                                    <span asp-validation-for="PostaKodu" class="text-danger small"></span>
-                                </div>
+
                             </div>
 
-                            <div class="row">
-                                <div class="col">
-                                    <label asp-for="AdresSatiri" class="form-label fw-bold small text-secondary">Adres Detayı (İlçe/Mahalle)</label>
-                                    <textarea asp-for="AdresSatiri" id="AdresSatiri" class="form-control" rows="3" placeholder="Mahalle, Sokak, Kapı No..."></textarea>
-                                    <span asp-validation-for="AdresSatiri" class="text-danger small"></span>
+                            <div class="row g-3">
+
+                                <div class="col-md-4">
+
+                                    <label asp-for="PostaKodu"
+                                           class="form-label fw-semibold">
+                                        Posta Kodu
+                                    </label>
+
+                                    <input asp-for="PostaKodu"
+                                           class="form-control"
+                                           placeholder="34000">
+
+                                    <span asp-validation-for="PostaKodu"
+                                          class="text-danger small"></span>
+
                                 </div>
+
+                                <div class="col-md-8">
+
+                                    <label asp-for="AdresSatiri"
+                                           class="form-label fw-semibold">
+                                        Adres Detayı
+                                    </label>
+
+                                    <textarea asp-for="AdresSatiri"
+                                              id="AdresSatiri"
+                                              rows="3"
+                                              class="form-control"
+                                              placeholder="Mahalle, Sokak, Kapı No"></textarea>
+
+                                    <span asp-validation-for="AdresSatiri"
+                                          class="text-danger small"></span>
+
+                                </div>
+
                             </div>
+
                         </div>
                     </div>
 
                     @* Ödeme Bilgileri *@
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-white py-3 border-bottom">
-                            <h2 class="h5 mb-0 fw-bold text-dark">Ödeme Bilgileri</h2>
+                    <div class="card border-0 shadow-sm">
+
+                        <div class="card-header bg-white border-bottom py-3">
+                            <h2 class="h5 fw-bold mb-0">
+                                Ödeme Bilgileri
+                            </h2>
                         </div>
+
                         <div class="card-body">
+
                             @if (ViewBag.Cart?.Toplam <= 0)
                             {
-                                <div class="alert alert-success border-0 shadow-sm">
-                                    <i class="fa fa-gift me-2"></i> Bu sipariş ücretsizdir.
+                                <div class="alert alert-success shadow-sm border-0">
+                                    <i class="fa fa-gift me-2"></i>
+                                    Bu sipariş ücretsizdir.
                                 </div>
-                                <input type="hidden" asp-for="CartNumber" value="0000000000000000" />
+
+                                <input type="hidden"
+                                       asp-for="CartNumber"
+                                       value="0000000000000000" />
                             }
                             else
                             {
-                                <div class="row mb-3">
-                                    <div class="col-md-12 mb-3">
-                                        <label asp-for="CartName" class="form-label small fw-bold text-secondary">Kart Üzerindeki İsim</label>
-                                        <input asp-for="CartName" class="form-control" placeholder="Ad Soyad">
-                                        <span asp-validation-for="CartName" class="text-danger small"></span>
-                                    </div>
+                                <div class="mb-3">
 
-                                    <div class="col-md-12 mb-3">
-                                        <label asp-for="CartNumber" class="form-label small fw-bold text-secondary">Kart Numarası</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-white border-end-0">
-                                                <i class="fa-solid fa-credit-card text-muted" id="card-icon"></i>
-                                            </span>
-                                            <input asp-for="CartNumber" id="CartNumber" class="form-control border-start-0" placeholder="0000 0000 0000 0000" maxlength="19">
-                                        </div>
-                                        <span asp-validation-for="CartNumber" id="luhn-error" class="text-danger small"></span>
-                                    </div>
+                                    <label asp-for="CartName"
+                                           class="form-label fw-semibold">
+                                        Kart Üzerindeki İsim
+                                    </label>
+
+                                    <input asp-for="CartName"
+                                           class="form-control"
+                                           placeholder="Ad Soyad">
+
+                                    <span asp-validation-for="CartName"
+                                          class="text-danger small"></span>
+
                                 </div>
 
-                                <div class="row mb-3">
-                                    <div class="col-4">
-                                        <label asp-for="CartExpirationMonth" class="form-label small fw-bold text-secondary">Ay</label>
-                                        <input asp-for="CartExpirationMonth" class="form-control text-center" placeholder="MM" maxlength="2">
-                                        <span asp-validation-for="CartExpirationMonth" class="text-danger small"></span>
+                                <div class="mb-3">
+
+                                    <label asp-for="CartNumber"
+                                           class="form-label fw-semibold">
+                                        Kart Numarası
+                                    </label>
+
+                                    <div class="input-group">
+
+                                        <span class="input-group-text bg-white">
+                                            <i class="fa-solid fa-credit-card text-muted"
+                                               id="card-icon"></i>
+                                        </span>
+
+                                        <input asp-for="CartNumber"
+                                               id="CartNumber"
+                                               class="form-control"
+                                               maxlength="19"
+                                               placeholder="0000 0000 0000 0000">
+
                                     </div>
+
+                                    <span asp-validation-for="CartNumber"
+                                          id="luhn-error"
+                                          class="text-danger small"></span>
+
+                                </div>
+
+                                <div class="row g-3">
+
                                     <div class="col-4">
-                                        <label asp-for="CartExpirationYear" class="form-label small fw-bold text-secondary">Yıl</label>
-                                        <input asp-for="CartExpirationYear" class="form-control text-center" placeholder="YY" maxlength="4">
-                                        <span asp-validation-for="CartExpirationYear" class="text-danger small"></span>
+
+                                        <label asp-for="CartExpirationMonth"
+                                               class="form-label fw-semibold">
+                                            Ay
+                                        </label>
+
+                                        <input asp-for="CartExpirationMonth"
+                                               class="form-control text-center"
+                                               maxlength="2"
+                                               placeholder="MM">
+
+                                        <span asp-validation-for="CartExpirationMonth"
+                                              class="text-danger small"></span>
+
                                     </div>
+
                                     <div class="col-4">
-                                        <label asp-for="CartCVV" class="form-label small fw-bold text-secondary">CVV</label>
-                                        <input asp-for="CartCVV" class="form-control text-center" placeholder="***" maxlength="3">
-                                        <span asp-validation-for="CartCVV" class="text-danger small"></span>
+
+                                        <label asp-for="CartExpirationYear"
+                                               class="form-label fw-semibold">
+                                            Yıl
+                                        </label>
+
+                                        <input asp-for="CartExpirationYear"
+                                               class="form-control text-center"
+                                               maxlength="4"
+                                               placeholder="YYYY">
+
+                                        <span asp-validation-for="CartExpirationYear"
+                                              class="text-danger small"></span>
+
                                     </div>
+
+                                    <div class="col-4">
+
+                                        <label asp-for="CartCVV"
+                                               class="form-label fw-semibold">
+                                            CVV
+                                        </label>
+
+                                        <input asp-for="CartCVV"
+                                               class="form-control text-center"
+                                               maxlength="3"
+                                               placeholder="***">
+
+                                        <span asp-validation-for="CartCVV"
+                                              class="text-danger small"></span>
+
+                                    </div>
+
                                 </div>
                             }
+
                         </div>
                     </div>
+
                 </div>
 
-                @* SAĞ PANEL: SİPARİŞ ÖZETİ *@
-                <div class="col-md-4">
-                    <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <!-- SAĞ PANEL -->
+                <div class="col-lg-4">
+
+                    <div class="card border-0 shadow-sm sticky-top"
+                         style="top: 20px;">
+
                         <div class="card-header bg-dark text-white py-3">
-                            <h2 class="h6 mb-0 text-uppercase">Sipariş Özeti</h2>
+                            <h2 class="h6 mb-0 text-uppercase">
+                                Sipariş Özeti
+                            </h2>
                         </div>
+
                         <div class="card-body">
+
                             <div class="mb-3">
-                                <label class="form-label small fw-bold text-secondary">Kargo Firması Seçin</label>
-                                <select id="SelectedCarrierId" asp-for="SelectedCarrierId" class="form-select" required>
-                                    <option value="">Seçiniz...</option>
+
+                                <label class="form-label fw-semibold small">
+                                    Kargo Firması
+                                </label>
+
+                                <select id="SelectedCarrierId"
+                                        asp-for="SelectedCarrierId"
+                                        class="form-select"
+                                        required>
+
+                                    <option value="">
+                                        Seçiniz...
+                                    </option>
+
                                     @if (ViewBag.Carriers != null)
                                     {
                                         foreach (var carrier in (SelectList)ViewBag.Carriers)
                                         {
-                                            <option value="@carrier.Value">@carrier.Text</option>
+                                            <option value="@carrier.Value">
+                                                @carrier.Text
+                                            </option>
                                         }
                                     }
+
                                 </select>
+
                             </div>
 
-                            <hr class="my-3" />
+                            <hr>
 
                             <div class="d-flex justify-content-between mb-2">
-                                <span class="text-secondary small">Ara Toplam</span>
-                                <span id="subtotal" class="fw-bold">
+                                <span class="text-secondary">Ara Toplam</span>
+
+                                <strong id="subtotal">
                                     @ViewBag.Cart?.Toplam.ToString("C2")
-                                </span>
+                                </strong>
                             </div>
 
                             <div class="d-flex justify-content-between mb-2">
-                                <span class="text-secondary small">Kargo Ücreti</span>
-                                <strong id="shipping-amount" class="text-dark">0,00 TL</strong>
+                                <span class="text-secondary">Kargo</span>
+
+                                <strong id="shipping-amount">
+                                    0,00 TL
+                                </strong>
                             </div>
 
-                            <div class="d-flex justify-content-between mb-3 border-top pt-2">
-                                <span class="fw-bold text-dark">Genel Toplam</span>
-                                <span id="grand-total" class="fs-4 fw-bold text-success">
-                                    @ViewBag.Cart?.Toplam.ToString("C2")
+                            <div class="d-flex justify-content-between border-top pt-3 mb-4">
+
+                                <span class="fw-bold">
+                                    Genel Toplam
                                 </span>
+
+                                <span id="grand-total"
+                                      class="fw-bold fs-4 text-success">
+
+                                    @ViewBag.Cart?.Toplam.ToString("C2")
+
+                                </span>
+
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">Ödemeyi Tamamla</button>
+
+                                <button type="submit"
+                                        class="btn btn-warning btn-lg fw-bold shadow-sm">
+
+                                    Ödemeyi Tamamla
+
+                                </button>
+
                             </div>
+
                         </div>
                     </div>
+
                 </div>
+
             </div>
+
         </form>
+
     </div>
 </section>
 
 @section Scripts {
     <script>
         $(document).ready(function () {
-            
-            // --- ADRES DEĞİŞTİRME MANTIĞI ---
-            $('#chkUseDefault').on('change', function() {
+
+            // Sayfa açıldığında formların başlangıç durumunu (disabled/required) switch'e göre ayarla
+            initAddressFormState();
+
+            // =========================
+            // ADRES TOGGLE MANTIĞI
+            // =========================
+            $('#chkUseDefault').on('change', function () {
                 const isChecked = this.checked;
-                const $newAddressSection = $('#deliveryAddressSection');
-                
-                if(isChecked) {
-                    $newAddressSection.slideUp(300);
-                    $newAddressSection.find('input, select, textarea').prop('disabled', true);
+                const $section = $('#deliveryAddressSection');
+
+                if (isChecked) {
+                    $section.slideUp(250);
+                    $section.find('input, select, textarea')
+                        .prop('disabled', true)
+                        .removeAttr('required');
+                    $section.find('.text-danger').text('');
+                    $section.find('.is-invalid').removeClass('is-invalid');
                 } else {
-                    $newAddressSection.slideDown(300);
-                    $newAddressSection.find('input, select, textarea').prop('disabled', false);
+                    $section.slideDown(250);
+                    $section.find('input, select, textarea').prop('disabled', false);
                 }
-                calculateShipping(); // Adres tipi değişince kargoyu yeniden hesapla
+
+                calculateShipping();
             });
 
-            // --- KART NUMARASI VE LUHN KONTROLÜ ---
+            function initAddressFormState() {
+                const isChecked = $('#chkUseDefault').is(':checked');
+                const $section = $('#deliveryAddressSection');
+                if (isChecked) {
+                    $section.find('input, select, textarea').prop('disabled', true).removeAttr('required');
+                }
+            }
+
+            // =========================
+            // KART NUMARASI & LUHN
+            // =========================
             const cardInput = $('#CartNumber');
             const cardIcon = $('#card-icon');
             const luhnError = $('#luhn-error');
 
             cardInput.on('input', function (e) {
-                let value = e.target.value.replace(/\D/g, ''); 
-                let formattedValue = value.replace(/(\d{4})(?=\d)/g, '$1 '); 
-                $(this).val(formattedValue);
+                let value = e.target.value.replace(/\D/g, '');
+                let formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+
+                $(this).val(formatted);
 
                 if (value.startsWith('4')) {
                     cardIcon.attr('class', 'fa-brands fa-cc-visa text-primary');
-                } else if (/^(5[1-5]|2[2-7])/.test(value)) {
+                }
+                else if (/^(5[1-5]|2[2-7])/.test(value)) {
                     cardIcon.attr('class', 'fa-brands fa-cc-mastercard text-danger');
-                } else {
+                }
+                else {
                     cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
                 }
 
@@ -286,8 +594,10 @@
                 return sum % 10 === 0;
             }
 
-            // --- KARGO HESAPLAMA MANTIĞI ---
-            $(document).on('change', '#SelectedCarrierId, #Sehir, #AdresSatiri', function() {
+            // =========================
+            // KARGO HESAPLAMA
+            // =========================
+            $(document).on('change', '#SelectedCarrierId, #ddlSehir, #ddlIlce', function () {
                 calculateShipping();
             });
 
@@ -296,27 +606,50 @@
                 let city = "";
                 let district = "";
 
-                if($('#chkUseDefault').is(':checked')) {
-                    city = "@Model.DefaultAddress?.City";
-                    district = "@Model.DefaultAddress?.District";
+                if ($('#chkUseDefault').is(':checked')) {
+                    city = '@Model.DefaultAddress?.City';
+                    district = '@Model.DefaultAddress?.District';
                 } else {
-                    city = $('#Sehir').val();
-                    district = $('#AdresSatiri').val();
+                    // ID yerine string adı göndermek için option:selected kullandık
+                    city = $('#ddlSehir option:selected').val() ? $('#ddlSehir option:selected').text().trim() : "";
+                    district = $('#ddlIlce option:selected').val() ? $('#ddlIlce option:selected').text().trim() : "";
                 }
 
                 if (carrierId && city) {
-                    $.get('/Order/GetShippingPrice', { 
-                        carrierId: carrierId, 
-                        city: city, 
-                        district: district 
-                    }, function (res) {
+                    $.get('/Order/GetShippingPrice', {
+                        carrierId: carrierId,
+                        cityName: city,
+                        districtName: district
+                    })
+                    .done(function (res) {
                         if (res.success) {
-                            $('#shipping-amount').text(res.shippingPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL');
-                            $('#grand-total').text(res.totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL');
+                            // ==========================================
+                            // SP'DEN GELEN KÂRLILIK VE GÖRÜNÜM KONTROLÜ
+                            // ==========================================
+                            if (res.isFreeShipping === true) {
+                                // Eğer kârlılık karşılandıysa kargo satırını yeşil yapıp "Ücretsiz" yazdırıyoruz
+                                $('#shipping-amount')
+                                    .text('Ücretsiz')
+                                    .removeClass('text-secondary')
+                                    .addClass('text-success fw-bold');
+                            } else {
+                                // Kârlılık karşılanmadıysa SP'den gelen normal ücreti basıyoruz
+                                $('#shipping-amount')
+                                    .text(res.shippingPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL')
+                                    .removeClass('text-success fw-bold')
+                                    .addClass('text-secondary');
+                            }
+
+                            // Genel Toplam alanını güncelle (Salt + kargo fiyata göre)
+                            $('#grand-total').text(
+                                res.totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL'
+                            );
+
                         } else {
                             resetPrices();
                         }
-                    }).fail(function() {
+                    })
+                    .fail(function () {
                         resetPrices();
                     });
                 } else {
@@ -325,21 +658,33 @@
             }
 
             function resetPrices() {
-                $('#shipping-amount').text('0,00 TL');
+                $('#shipping-amount')
+                    .text('0,00 TL')
+                    .removeClass('text-success fw-bold')
+                    .addClass('text-secondary');
                 $('#grand-total').text($('#subtotal').text());
             }
 
-            // Sayfa açılışında kargo seçiliyse tetikle
+            // İlk yükleme kontrolü
             if ($('#SelectedCarrierId').val()) {
                 calculateShipping();
             }
 
-            // Form Submit Validasyonu
+            // =========================
+            // FORM VALIDATION
+            // =========================
             $('#checkoutForm').on('submit', function (e) {
-                if ($('#chkUseDefault').is(':checked')) {
-                    $(this).validate().settings.ignore = "#deliveryAddressSection *";
+                const isDefault = $('#chkUseDefault').is(':checked');
+                const validator = $(this).validate();
+
+                if (isDefault) {
+                    validator.settings.ignore = "#deliveryAddressSection *";
                 } else {
-                    $(this).validate().settings.ignore = ":hidden";
+                    validator.settings.ignore = ":hidden";
+                }
+
+                if (!$(this).valid()) {
+                    e.preventDefault();
                 }
             });
         });

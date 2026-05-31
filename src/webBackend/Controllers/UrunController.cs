@@ -39,6 +39,7 @@ namespace webBackend.Controllers
 
         var urunler = await query.Select(i => new UrunViewModel
         {
+            PurchasePrice = i.PurchasePrice,
             ProductId = i.ProductId,
             ProductName = i.ProductName,
             Price = i.Price,
@@ -122,9 +123,14 @@ namespace webBackend.Controllers
                 ModelState.AddModelError("ImageFile", "Lütfen bir ürün resmi seçiniz.");
             }
 
+            // --- KRİTİK İŞ KURALI: VALİDASYON ---
+            if (model.Price < model.PurchasePrice)
+            {
+                ModelState.AddModelError("Price", $"Satış fiyatı, alış fiyatından ({model.PurchasePrice:N2} TL) düşük olamaz.");
+            }
+
             if (ModelState.IsValid)
             {
-                
                 string fileName = "default.png";
 
                 if (model.ImageFile != null && model.ImageFile.Length > 0)
@@ -151,13 +157,12 @@ namespace webBackend.Controllers
                 {
                     ProductName = model.ProductName,
                     Price = model.Price,
+                    PurchasePrice = model.PurchasePrice, 
                     ProductDescription = model.Description,
                     IsActive = model.IsActive,
                     AnaSayfa = model.AnaSayfa,
                     CategoryId = model.CategoryId,
-
                     ImageUrl = "/img/" + fileName,
-
                     Weight = model.Weight,
                     Width = model.Width,
                     Height = model.Height,
@@ -174,7 +179,6 @@ namespace webBackend.Controllers
                     foreach (var id in selectedCarrierIds)
                     {
                         var carrier = await _context.Carriers.FindAsync(id);
-
                         if (carrier != null)
                         {
                             entity.Carriers.Add(carrier);
@@ -188,19 +192,11 @@ namespace webBackend.Controllers
                 return RedirectToAction("Index");
             }
 
-        
-        ViewBag.Kategoriler = new SelectList(
-            await _context.Categories.ToListAsync(),
-            "Id",
-            "Name"
-        );
+            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name");
+            ViewBag.CarrierList = await _context.Carriers.Where(c => (bool)c.IsActive).ToListAsync();
 
-        ViewBag.CarrierList = await _context.Carriers
-            .Where(c => (bool)c.IsActive)
-            .ToListAsync();
-
-        return View(model);
-    }
+            return View(model);
+        }
 
         [HttpGet]
         [Authorize(Policy = "Product.Edit")]
@@ -221,6 +217,7 @@ namespace webBackend.Controllers
                 IsActive = product.IsActive,
                 AnaSayfa = product.AnaSayfa,
                 Price = product.Price.ToString("F2", new System.Globalization.CultureInfo("tr-TR")),
+                PurchasePrice = product.PurchasePrice,
                 CategoryId = product.CategoryId,
                 ImageUrl = product.ImageUrl,
                 Weight = product.Weight,
@@ -245,27 +242,71 @@ namespace webBackend.Controllers
         public async Task<ActionResult> Edit(int id, UrunEditModel model, int[] selectedCarrierIds)
         {
             if (id != model.ProductId) return BadRequest();
+            
+            decimal parsedPrice = 0;
+            var culture = new System.Globalization.CultureInfo("tr-TR");
+            
+            // Fiyat Dönüşüm kontrolü
+            if (!decimal.TryParse(model.Price, System.Globalization.NumberStyles.Any, culture, out parsedPrice))
+            {
+                ModelState.AddModelError("Price", "Geçersiz bir satış fiyatı formatı girdiniz.");
+            }
+            else if (parsedPrice < model.PurchasePrice)
+            {
+                ModelState.AddModelError("Price", $"Satış fiyatı, alış fiyatından ({model.PurchasePrice:N2} TL) düşük olamaz.");
+            }
 
             if (ModelState.IsValid)
             {
-                // ÖNEMLİ: Carriers ile birlikte çekiyoruz
+                // Ürünü kargo ilişkisiyle birlikte çekiyoruz
                 var product = await _context.Products.Include(p => p.Carriers).FirstOrDefaultAsync(p => p.ProductId == id);
                 if (product == null) return NotFound();
 
-                // Fiyat ve temel alanların güncellenmesi aynı kalıyor...
+                // 💡 YENİ RESMİ SUNUCUYA KAYDETME
+                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                {
+                    var extension = Path.GetExtension(model.ImageFile.FileName);
+                    var fileName = string.Format($"{Guid.NewGuid()}{extension}");
+                    
+                    // Yeni resmi wwwroot/img klasörüne kaydediyoruz
+                    var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", fileName);
+
+                    using (var stream = new FileStream(path, FileMode.Create))
+                    {
+                        await model.ImageFile.CopyToAsync(stream);
+                    }
+
+                    // ⚠️ UYARINIZ DOĞRULTUSUNDA: Sunucudan eski resmi silme kodunu tamamen kaldırdık!
+                    // Eski resim dosya olarak sunucuda kalmaya devam edecek. 
+                    // Böylece sipariş geçmişindeki (ImageSnapshot) eski linkler kırılmayacak.
+
+                    // Ürünün güncel resim yolunu değiştiriyoruz
+                    product.ImageUrl = "/img/" + fileName;
+                }
+
+                // Alanların güncellenmesi
                 product.ProductName = model.ProductName;
                 product.ProductDescription = model.Description; 
                 product.IsActive = model.IsActive;
-                // ... (diğer atamalar)
+                product.Price = parsedPrice; 
+                product.PurchasePrice = model.PurchasePrice;
+                
+                product.Stock = model.Stock;
+                product.Weight = model.Weight;
+                product.Width = model.Width;
+                product.Height = model.Height;
+                product.Length = model.Length;
+                product.AnaSayfa = model.AnaSayfa;
+                product.CategoryId = model.CategoryId;
 
                 // --- KARGO GÜNCELLEME MANTIĞI ---
-                product.Carriers.Clear(); // Önce mevcutları siliyoruz (EF aradaki tabloyu otomatik temizler)
+                product.Carriers.Clear(); 
                 if (selectedCarrierIds != null)
                 {
                     foreach (var carrierId in selectedCarrierIds)
                     {
                         var carrier = await _context.Carriers.FindAsync(carrierId);
-                        if (carrier != null) product.Carriers.Add(carrier); // Yeni seçimleri ekliyoruz
+                        if (carrier != null) product.Carriers.Add(carrier);
                     }
                 }
 
@@ -275,11 +316,12 @@ namespace webBackend.Controllers
                 return RedirectToAction("Index");
             }
 
-            ViewBag.Kategoriler = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", model.CategoryId);
-            ViewBag.CarrierList = await _context.Carriers.Where(c => (bool)c.IsActive).ToListAsync();
+            // Hata durumunda form verilerini korumak için listeleri yeniden dolduruyoruz
+            ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", model.CategoryId);
+            ViewBag.CarrierList = await _context.Carriers.ToListAsync();
+            
             return View(model);
         }
-
         [HttpGet]
         [Authorize(Policy = "Product.Delete")]
         public ActionResult Delete(int? Id)

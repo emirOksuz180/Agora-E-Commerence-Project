@@ -21,6 +21,7 @@ builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProv
 builder.Services.AddHttpContextAccessor(); // URL yakalamak için
 builder.Services.AddScoped<DynamicEntityManager>();
 builder.Services.AddScoped<ActionPermissionService>(); 
+builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 
 //  Veritabanı Yapılandırması 
 builder.Services.AddDbContext<AgoraDbContext>(options =>

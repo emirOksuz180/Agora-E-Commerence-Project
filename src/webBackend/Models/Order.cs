@@ -23,6 +23,10 @@ public partial class Order
     [StringLength(100)]
     public string Soyad { get; set; } = null!;
 
+    public string? PaymentId { get; set; }
+
+    public string? ConversationId { get; set; }
+
     [Required(ErrorMessage = "Şehir bilgisi zorunludur.")]
     [Display(Name = "Şehir")]
     public string Sehir { get; set; } = null!;

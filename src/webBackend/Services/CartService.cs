@@ -1,3 +1,5 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using webBackend.Models;
 namespace webBackend.Services;
@@ -11,6 +13,9 @@ public interface ICartService
     Task RemoveItem(int urunId, int miktar = 1);
     Task TransferCartToUser(string username);
     Task ClearCart();
+
+    // ICartService.cs içerisindeki ilgili satırı bul ve aşağıdakiyle değiştir:
+    Task<ShippingCalculationResult> GetDynamicShippingAsync(int cityId, int districtId, int carrierId, string username);
 }
 
 public class CartService : ICartService
@@ -153,4 +158,46 @@ public class CartService : ICartService
 
     await _context.SaveChangesAsync();
   }
+
+
+
+
+    // CartService.cs içerisindeki metodu hafifçe güncelliyoruz
+public async Task<ShippingCalculationResult> GetDynamicShippingAsync(int cityId, int districtId, int carrierId, string username)
+{
+    var cart = await GetCart(username);
+    if (cart == null) return null;
+    
+    var priceParam = new SqlParameter("@FinalShippingPrice", SqlDbType.Decimal) 
+    { 
+        Direction = ParameterDirection.Output, 
+        Precision = 18, Scale = 2 
+    };
+    var isFreeParam = new SqlParameter("@IsFreeShipping", SqlDbType.Bit) 
+    { 
+        Direction = ParameterDirection.Output 
+    };
+
+    // SQL Prosedürünü çalıştır (SP'nin @CityId aldığını varsayarak)
+    await _context.Database.ExecuteSqlRawAsync(
+        "EXEC sp_CalculateShippingProfitability @CartId, @CityId, @DistrictId, @SelectedCarrierId, @FinalShippingPrice OUTPUT, @IsFreeShipping OUTPUT",
+        new SqlParameter("@CartId", cart.CartId),
+        new SqlParameter("@CityId", cityId), // TblIl ID'si
+        new SqlParameter("@DistrictId", districtId),
+        new SqlParameter("@SelectedCarrierId", carrierId),
+        priceParam,
+        isFreeParam
+    );
+
+    return new ShippingCalculationResult 
+    {
+        IsSuccess = true,
+        FinalFiyat = (priceParam.Value != DBNull.Value) ? (decimal)priceParam.Value : 0,
+        UcretsizKargo = isFreeParam.Value != DBNull.Value && (bool)isFreeParam.Value,
+        CartTotal = (decimal)cart.Toplam
+    };
+}
+
+
+
 }

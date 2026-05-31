@@ -5,7 +5,8 @@ namespace webBackend.Models;
 
 public partial class User
 {
-    public int UserId { get; set; }
+  public static string? Identity { get; internal set; }
+  public int UserId { get; set; }
 
     public string UserName { get; set; } = null!;
 

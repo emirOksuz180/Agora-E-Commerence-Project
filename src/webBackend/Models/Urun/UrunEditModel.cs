@@ -64,6 +64,8 @@ namespace webBackend.Models
         [RegularExpression(@"^[0-9]*$", ErrorMessage = "Lütfen sadece rakam giriniz.")]
         public int Stock { get; set; }
 
+        public decimal PurchasePrice { get; set; }
+
 
         public int[] SelectedCarrierIds { get; set; }
     }

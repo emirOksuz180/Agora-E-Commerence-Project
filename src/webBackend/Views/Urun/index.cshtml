@@ -41,7 +41,11 @@
                                     <th style="width: 50px;">ID</th>
                                     <th style="width: 70px;">Resim</th>
                                     <th>Ürün Adı</th>
-                                    <th>Fiyat</th>
+                                    
+                                    @* 💡 YENİ EKLENEN SÜTUN BAŞLIKLARI *@
+                                    <th>Alış Fiyatı</th>
+                                    <th>Satış Fiyatı</th>
+                                    
                                     <th style="width: 80px;">Stok</th>
                                     <th style="width: 50px;">Aktif</th>
                                     <th style="width: 50px;">AnaS.</th>
@@ -61,7 +65,10 @@
                                             <img src="@urun.ImageUrl" class="rounded" style="width: 50px; height: 50px; object-fit: cover;" alt="@urun.ProductName">
                                         </td>
                                         <td class="fw-bold">@urun.ProductName</td>
-                                        <td class="text-nowrap text-end">@urun.Price.ToString("C2")</td>
+                                        
+                                        @* 💡 YENİ EKLENEN SÜTUN İÇERİKLERİ *@
+                                        <td class="text-nowrap text-end text-muted">@urun.PurchasePrice.ToString("C2")</td>
+                                        <td class="text-nowrap text-end fw-bold text-success">@urun.Price.ToString("C2")</td>
                                         
                                         @* Stok Kolonu Entegrasyonu *@
                                         <td class="text-center">
@@ -160,8 +167,7 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        
-                window.deleteProduct = function(productId, productName) {
+        window.deleteProduct = function(productId, productName) {
             console.log("Fonksiyon tetiklendi:", productId);
 
             Swal.fire({
@@ -195,6 +201,5 @@
                 }
             });
         };
-        
     </script>
 }

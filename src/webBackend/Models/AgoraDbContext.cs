@@ -147,6 +147,7 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ProductDescription).HasMaxLength(500);
             entity.Property(e => e.ProductName).HasMaxLength(100);
+            entity.Property(e => e.PurchasePrice).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Weight).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.Width).HasColumnType("decimal(10, 2)");
 
@@ -163,7 +164,6 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
                         .HasConstraintName("FK_ProductCarriers_Carriers"),
                     l => l.HasOne<Product>().WithMany()
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
                         .HasConstraintName("FK_ProductCarriers_Products"),
                     j =>
                     {
@@ -171,6 +171,7 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
                         j.ToTable("ProductCarriers");
                     });
         });
+
 
         modelBuilder.Entity<Favorite>(entity =>
         {
@@ -227,7 +228,9 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
         {
             entity.Property(e => e.Ad).HasMaxLength(100);
             entity.Property(e => e.CargoTrackingCode).HasMaxLength(100);
+            entity.Property(e => e.ConversationId).HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(256);
+            entity.Property(e => e.PaymentId).HasMaxLength(100);
             entity.Property(e => e.Soyad).HasMaxLength(100);
             entity.Property(e => e.StatusId).HasDefaultValue(1);
 
@@ -247,14 +250,18 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.HasIndex(e => e.OrderId, "IX_OrderItem_OrderId");
 
             entity.HasIndex(e => e.UrunId, "IX_OrderItem_UrunId");
+
+            entity.Property(e => e.PaymentTransactionId).HasMaxLength(100);
+            entity.Property(e => e.PriceAtOrder).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ProductCodeSnapshot).HasMaxLength(100);
             entity.Property(e => e.ProductImageSnapshot).HasMaxLength(500);
-            entity.Property(e => e.PriceAtOrder).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ProductNameSnapshot).HasMaxLength(255);
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderItems).HasForeignKey(d => d.OrderId);
 
-            entity.HasOne(d => d.Urun).WithMany(p => p.OrderItems).HasForeignKey(d => d.UrunId);
+            entity.HasOne(d => d.Urun).WithMany(p => p.OrderItems)
+                .HasForeignKey(d => d.UrunId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
 

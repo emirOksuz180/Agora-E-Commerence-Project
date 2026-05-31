@@ -31,10 +31,22 @@
                             <textarea asp-for="Description" rows="3" class="form-control"></textarea>
                         </div>
                     </div>
+
+                    @* ---  YENİ EKLENEN ALAN: ALIŞ FİYATI --- *@
+                    <div class="row mb-3">
+                        <label asp-for="PurchasePrice" class="col-sm-2 col-form-label">Alış Fiyatı</label>
+                        <div class="col-sm-10">
+                            <input asp-for="PurchasePrice" class="form-control" type="text" placeholder="0,00">
+                            <span asp-validation-for="PurchasePrice" class="text-danger"></span>
+                        </div>
+                    </div>
+
                     <div class="row mb-3">
                         <label asp-for="Price" class="col-sm-2 col-form-label"></label>
                         <div class="col-sm-10">
                             <input asp-for="Price" class="form-control" type="text">
+                            @* Custom js validasyon mesajı alanı *@
+                            <span id="price-js-error" class="text-danger field-validation-valid"></span>
                             <span asp-validation-for="Price" class="text-danger"></span>
                         </div>
                     </div>
@@ -106,7 +118,6 @@
                                         {
                                             foreach (var carrier in (List<Carrier>)ViewBag.CarrierList)
                                             {
-                                                // Eğer Edit modundaysak ve bu kargo ürünün Carriers listesindeyse 'checked' gelsin
                                                 bool isSelected = Model?.SelectedCarrierIds != null && Model.SelectedCarrierIds.Contains(carrier.Id);
                                                 
                                                 <div class="col-md-4 py-1">
@@ -159,7 +170,8 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-sm-10 offset-sm-2">
-                            <button type="submit" class="btn btn-primary">Kaydet</button>
+                            @* 💡 Butona id="btnSubmit" atadık *@
+                            <button type="submit" id="btnSubmit" class="btn btn-primary">Kaydet</button>
                         </div>
                     </div>
             </div>
@@ -189,6 +201,32 @@
                 let l = parseFloat($("#Length").val()) || 0;
                 let desi = (w * h * l) / 3000;
                 $("#Desi").val(desi.toFixed(2));
+            });
+
+            // 💡 ANLIK FİYAT KONTROLÜ VE UYARI SİSTEMİ
+            function checkPriceValidation() {
+                let purchasePriceRaw = $("#PurchasePrice").val() || "0";
+                let priceRaw = $("#Price").val() || "0";
+
+                // Türkçe format uyumluluğu için düzenleme (1.500,50 -> 1500.50)
+                let purchasePrice = parseFloat(purchasePriceRaw.replace(/\./g, '').replace(',', '.')) || 0;
+                let price = parseFloat(priceRaw.replace(/\./g, '').replace(',', '.')) || 0;
+
+                if (priceRaw !== "" && price < purchasePrice) {
+                    $("#price-js-error").text("Satış fiyatı, alış fiyatından (" + purchasePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " TL) düşük olamaz.");
+                    $("#btnSubmit").prop("disabled", true);
+                } else {
+                    $("#price-js-error").text("");
+                    $("#btnSubmit").prop("disabled", false);
+                }
+            }
+
+            // Sayfa ilk yüklendiğinde mevcut fiyat durumunu hemen kontrol et (Edit moduna özel)
+            checkPriceValidation();
+
+            // Giriş yapıldıkça kontrolü tetikle
+            $("#Price, #PurchasePrice").on("input", function() {
+                checkPriceValidation();
             });
 
             // Sayı formatı ayarı

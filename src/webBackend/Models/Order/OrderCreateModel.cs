@@ -28,6 +28,10 @@ public class OrderCreateModel
     [Display(Name = "Şehir")]
     public string Sehir { get; set; } = null!;
 
+    [Required(ErrorMessage ="İlçe alanı zorunludur !")]
+    [Display(Name ="İlçe")]
+    public string? Ilce { get; set; }
+
     [Required(ErrorMessage = "Adres satırı boş bırakılamaz.")]
     [Display(Name = "Açık Adres")]
     public string AdresSatiri { get; set; } = null!;
@@ -45,11 +49,11 @@ public class OrderCreateModel
     public string CartName { get; set; } = null!;
 
     [Required(ErrorMessage = "Kart numarası zorunludur.")]
-    [CreditCard(ErrorMessage = "Geçerli bir kredi kartı numarası giriniz.")]
+    // [CreditCard(ErrorMessage = "Geçerli bir kredi kartı numarası giriniz.")]
     public string CartNumber { get; set; } = null!;
 
     [Required(ErrorMessage = "Yıl seçiniz.")]
-    [Range(2026, 2035, ErrorMessage = "Geçersiz yıl.")] // 2025'i 2026 yapabilirsin güncel yıl için
+    [Range(2026, 2035, ErrorMessage = "Geçersiz yıl.")] 
     public string CartExpirationYear { get; set; } = null!;
 
     [Required(ErrorMessage = "Ay seçiniz.")]
@@ -66,6 +70,11 @@ public class OrderCreateModel
     public int? DefaultAddressId { get; set; } // DB'den adresi çekmek için ID gerekebilir
 
     public int SelectedCarrierId { get; set; }
+
+
+    
+
+    
 }
 
 
