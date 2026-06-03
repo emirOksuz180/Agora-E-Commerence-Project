@@ -1,0 +1,178 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Mal Kabul ve Yerleştirme";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow border-success">
+            <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="fa-solid fa-box-open me-2"></i>Mal Kabul İstasyonu</h5>
+            </div>
+            <div class="card-body bg-light">
+                <div class="alert alert-info small shadow-sm mb-3">
+                    <i class="fa-solid fa-circle-info me-1"></i> Barkod okuyucu ile işlem yapabilirsiniz. İmleç otomatik olarak okutulan alandan diğerine geçecektir.
+                </div>
+
+                <div class="accordion mb-4 shadow-sm" id="algoAccordion">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-white text-dark fw-bold border" type="button" data-bs-toggle="collapse" data-bs-target="#algoCollapse">
+                                <i class="fa-solid fa-sitemap text-success me-2"></i> Lokasyon Barkod Yapısı Nasıl Okunur?
+                            </button>
+                        </h2>
+                        <div id="algoCollapse" class="accordion-collapse collapse" data-bs-parent="#algoAccordion">
+                            <div class="accordion-body border-top bg-white">
+                                <p class="small text-muted mb-3">
+                                    Depo içindeki adreslemeyi kolaylaştırmak için 4 parçalı standart bir barkod sistemi kullanılır. 
+                                    Örneğin; <strong class="text-success border px-2 py-1 rounded bg-light">ELK-A-01-B01</strong> barkodunun açılımı şöyledir:
+                                </p>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered align-middle mb-0 small">
+                                        <thead class="table-light text-secondary">
+                                            <tr>
+                                                <th>Bölüm</th>
+                                                <th>Kod</th>
+                                                <th>Anlamı</th>
+                                                <th>Örnekler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>1. Bölge (Zone)</strong></td>
+                                                <td><span class="badge bg-secondary fs-6">ELK</span></td>
+                                                <td>Ürün kategorisi veya deponun ana bölgesi.</td>
+                                                <td>ELK (Elektronik), MOD (Moda), HOB (Hobi) vb.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>2. Koridor (Aisle)</strong></td>
+                                                <td><span class="badge bg-secondary fs-6">A</span></td>
+                                                <td>İlgili bölgedeki koridor harfi.</td>
+                                                <td>A, B, C, D koridorları</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>3. Raf (Shelf)</strong></td>
+                                                <td><span class="badge bg-secondary fs-6">01</span></td>
+                                                <td>Koridordaki dikey raf bloku numarası.</td>
+                                                <td>01, 02 numaralı raflar</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>4. Göz (Bin)</strong></td>
+                                                <td><span class="badge bg-secondary fs-6">B01</span></td>
+                                                <td>Raftaki spesifik kutu, çekmece veya raf katmanı.</td>
+                                                <td>B01, B02 numaralı gözler</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <form id="frmMalKabul">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Ürün ID / Barkod</label>
+                        <div class="input-group input-group-lg shadow-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-barcode"></i></span>
+                            <input type="text" id="ProductId" name="ProductId" class="form-control" placeholder="Ürün barkodunu okutun..." autofocus required autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Raf / Lokasyon Barkodu</label>
+                        <div class="input-group input-group-lg shadow-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-location-crosshairs"></i></span>
+                            <input type="text" id="LocationBarcode" name="LocationBarcode" class="form-control" placeholder="Örn: TEL-D-01-B01" required autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Adet</label>
+                        <div class="input-group input-group-lg shadow-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                            <input type="number" id="Quantity" name="Quantity" class="form-control" value="1" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="button" id="btnRafaKoy" class="btn btn-success btn-lg shadow">
+                            <i class="fa-solid fa-check-double me-2"></i> Rafa Yerleştir
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            // Barkod okuyucu UX: Enter'a basınca sıradaki inputa geçiş yap
+            $('#ProductId').on('keypress', function (e) {
+                if (e.which == 13) { e.preventDefault(); $('#LocationBarcode').focus(); }
+            });
+            $('#LocationBarcode').on('keypress', function (e) {
+                if (e.which == 13) { e.preventDefault(); $('#Quantity').focus(); }
+            });
+            $('#Quantity').on('keypress', function (e) {
+                if (e.which == 13) { e.preventDefault(); $('#btnRafaKoy').click(); }
+            });
+
+            // AJAX ile Form Gönderimi
+            $('#btnRafaKoy').click(function () {
+                let productId = $('#ProductId').val();
+                let location = $('#LocationBarcode').val();
+                let qty = $('#Quantity').val();
+
+                if (!productId || !location || !qty) {
+                    Swal.fire('Eksik Bilgi', 'Lütfen ürün, lokasyon ve adet alanlarını doldurun.', 'warning');
+                    return;
+                }
+
+                // Butonu kilitle
+                let btn = $(this);
+                btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> İşleniyor...');
+
+                $.ajax({
+                    type: "POST",
+                    url: "/Depo/ReceiveStockPost",
+                    data: {
+                        ProductId: productId,
+                        LocationBarcode: location,
+                        Quantity: qty,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire({
+                                title: 'Başarılı!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            // Formu temizle ve imleci en başa al
+                            $('#ProductId').val('').focus();
+                            $('#LocationBarcode').val('');
+                            $('#Quantity').val('1');
+                        } else {
+                            Swal.fire('Hata!', response.message, 'error');
+                            $('#ProductId').focus();
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Hata!', 'Sistemsel bir sorun oluştu. Veritabanı bağlantısını kontrol edin.', 'error');
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false).html('<i class="fa-solid fa-check-double me-2"></i> Rafa Yerleştir');
+                    }
+                });
+            });
+        });
+    </script>
+}

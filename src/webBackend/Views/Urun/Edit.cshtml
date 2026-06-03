@@ -52,7 +52,7 @@
                     </div>
 
                     @* --- STOK ALANI ENTEGRASYONU --- *@
-                    <div class="row mb-3">
+                    @* <div class="row mb-3">
                         <label asp-for="Stock" class="col-sm-2 col-form-label">Stok Adedi</label>
                         <div class="col-sm-10">
                             <input asp-for="Stock" 
@@ -65,7 +65,7 @@
                             <span asp-validation-for="Stock" class="text-danger"></span>
                             <small class="text-muted">Mevcut stok miktarını buradan güncelleyebilirsiniz.</small>
                         </div>
-                    </div>
+                    </div> *@
 
                     <div class="row mb-3">
                         <label asp-for="Weight" class="col-sm-2 col-form-label"></label>
@@ -203,7 +203,7 @@
                 $("#Desi").val(desi.toFixed(2));
             });
 
-            // 💡 ANLIK FİYAT KONTROLÜ VE UYARI SİSTEMİ
+           
             function checkPriceValidation() {
                 let purchasePriceRaw = $("#PurchasePrice").val() || "0";
                 let priceRaw = $("#Price").val() || "0";

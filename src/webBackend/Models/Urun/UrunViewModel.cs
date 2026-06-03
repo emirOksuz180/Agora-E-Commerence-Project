@@ -64,10 +64,13 @@ namespace webBackend.Models
     [Display(Name = "Fiziksel Ürün Mü?")]
     public bool? IsPhysical { get; set; }
 
-    [Required(ErrorMessage = "Stok miktarı boş bırakılamaz.")]
-    [Range(0, 1000000, ErrorMessage = "Stok miktarı 0 ile 1.000.000 arasında olmalıdır.")]
-    [RegularExpression(@"^[0-9]*$", ErrorMessage = "Lütfen sadece rakam giriniz.")]
-    public int Stock { get; set; }
+    // [Required(ErrorMessage = "Stok miktarı boş bırakılamaz.")]
+    // [Range(0, 1000000, ErrorMessage = "Stok miktarı 0 ile 1.000.000 arasında olmalıdır.")]
+    // [RegularExpression(@"^[0-9]*$", ErrorMessage = "Lütfen sadece rakam giriniz.")]
+    // public int Stock { get; set; }
+
+
+    public int TotalStock { get; set; }
 
      public decimal PurchasePrice { get; set; }
 

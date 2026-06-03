@@ -51,6 +51,14 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
 
     public virtual DbSet<OrderShippingDetail> OrderShippingDetails { get; set; }
 
+    public virtual DbSet<Stock> Stocks { get; set; }
+
+    public virtual DbSet<StockMovement> StockMovements { get; set; }
+
+    public virtual DbSet<Warehouse> Warehouses { get; set; }
+
+    public virtual DbSet<WarehouseLocation> WarehouseLocations { get; set; }
+
     
 
    
@@ -333,6 +341,55 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
             entity.Property(e => e.RegionName).HasMaxLength(100);
         });
 
+
+
+        modelBuilder.Entity<Stock>(entity =>
+        {
+            entity.HasKey(e => e.StockId).HasName("PK__Stocks__2C83A9C2B5DFC52C");
+
+            entity.ToTable(tb => tb.IsTemporal(ttb =>
+                    {
+                        ttb.UseHistoryTable("StocksHistory", "dbo");
+                        ttb
+                            .HasPeriodStart("SysStartTime")
+                            .HasColumnName("SysStartTime");
+                        ttb
+                            .HasPeriodEnd("SysEndTime")
+                            .HasColumnName("SysEndTime");
+                    }));
+
+            entity.Property(e => e.DailyStorageCostPerUnit)
+                .HasDefaultValue(50m)
+                .HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Location).WithMany(p => p.Stocks)
+                .HasForeignKey(d => d.LocationId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Stocks__Location__4C364F0E");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.Stocks)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Stocks__ProductI__4B422AD5");
+        });
+
+        modelBuilder.Entity<StockMovement>(entity =>
+        {
+            entity.HasKey(e => e.MovementId).HasName("PK__StockMov__D1822446C5C589B3");
+
+            entity.Property(e => e.MovementDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.MovementType).HasMaxLength(50);
+            entity.Property(e => e.PerformedBy).HasMaxLength(100);
+
+            entity.HasOne(d => d.Stock).WithMany(p => p.StockMovements)
+                .HasForeignKey(d => d.StockId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__StockMove__Stock__54CB950F");
+        });
+
+
         modelBuilder.Entity<CarrierRegion>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__CarrierR__3214EC0740EFEF37");
@@ -346,6 +403,40 @@ public partial class AgoraDbContext : IdentityDbContext<AppUser, AppRole, int>
                 .HasForeignKey(d => d.RegionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__CarrierRe__Regio__793DFFAF");
+        });
+
+
+        modelBuilder.Entity<Warehouse>(entity =>
+        {
+            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFF94C2644E0");
+
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Location).HasMaxLength(255);
+            entity.Property(e => e.WarehouseName).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<WarehouseLocation>(entity =>
+        {
+            entity.HasKey(e => e.LocationId).HasName("PK__Warehous__E7FEA4974FB951EA");
+
+            entity.HasIndex(e => e.LocationBarcode, "UQ__Warehous__C952110E100A017C").IsUnique();
+
+            entity.Property(e => e.Aisle).HasMaxLength(10);
+            entity.Property(e => e.Bin).HasMaxLength(10);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.LocationBarcode)
+                .HasMaxLength(43)
+                .HasComputedColumnSql("(upper(((((([ZoneCode]+'-')+[Aisle])+'-')+[Shelf])+'-')+[Bin]))", true);
+            entity.Property(e => e.MaxVolumeDesi)
+                .HasDefaultValue(10000m)
+                .HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Shelf).HasMaxLength(10);
+            entity.Property(e => e.ZoneCode).HasMaxLength(10);
+
+            entity.HasOne(d => d.Warehouse).WithMany(p => p.WarehouseLocations)
+                .HasForeignKey(d => d.WarehouseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Warehouse__Wareh__467D75B8");
         });
 
         

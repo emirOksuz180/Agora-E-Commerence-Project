@@ -34,18 +34,24 @@
                 <article>
                     <h4 class="title text-dark">@Model.ProductName</h4>
                     
-                    @* --- DİNAMİK STOK DURUMU --- *@
+                    
+                    @{
+                        
+                        var guncelStokMiktari = Model.Stocks?.Sum(s => s.AvailableQuantity) ?? 0; 
+                    }
+
+                    
                     <div class="stock-status mb-2">
-                        @if (Model.Stock > 10)
+                        @if (guncelStokMiktari > 10)
                         {
                             <p class="text-success fw-bold">
                                 <i class="fa-solid fa-check-circle me-1"></i> Stokta Mevcut
                             </p>
                         }
-                        else if (Model.Stock > 0 && Model.Stock <= 10)
+                        else if (guncelStokMiktari > 0 && guncelStokMiktari <= 10)
                         {
                             <p class="text-warning fw-bold">
-                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Son @Model.Stock Ürün!
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Son @guncelStokMiktari Ürün!
                             </p>
                         }
                         else
@@ -73,8 +79,8 @@
                         <form action="/Cart/AddToCart" method="post" class="d-inline">
                             <input type="hidden" name="urunId" value="@Model.ProductId">
                             
-                            @* Stok yoksa butonu pasif yapıyoruz *@
-                            @if (Model.Stock > 0)
+                            @* --- 3. SEPET BUTONU KONTROLÜ --- *@
+                            @if (guncelStokMiktari > 0)
                             {
                                 <button type="submit" class="btn btn-warning px-4">
                                     <i class="fa fa-shopping-basket me-1"></i> Sepete Ekle

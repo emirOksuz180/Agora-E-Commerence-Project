@@ -8,10 +8,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.AspNetCore.Authorization;
+using System.IO;
+using System;
 
 namespace webBackend.Controllers
 {
-
     [Authorize(Policy = "Product.View")]
     public class UrunController : Controller
     {
@@ -22,55 +23,55 @@ namespace webBackend.Controllers
             _context = context;
         }
 
-
-    [Authorize(Policy = "Product.View")]
-    public async Task<ActionResult> Index(int? kategori)
-    {
-        var query = _context.Products
-        .Where(x => !x.IsDeleted)
-        .AsQueryable();
-
-        if (kategori != null)
+        [Authorize(Policy = "Product.View")]
+        public async Task<ActionResult> Index(int? kategori)
         {
-            query = query.Where(i => i.CategoryId == kategori);
-        }
+            var query = _context.Products
+                .Where(x => !x.IsDeleted)
+                .AsQueryable();
 
+            if (kategori != null)
+            {
+                query = query.Where(i => i.CategoryId == kategori);
+            }
 
-
-        var urunler = await query.Select(i => new UrunViewModel
-        {
-            PurchasePrice = i.PurchasePrice,
-            ProductId = i.ProductId,
-            ProductName = i.ProductName,
-            Price = i.Price,
-            IsActive = i.IsActive,
-            AnaSayfa = i.AnaSayfa,
-            CategoryId = i.CategoryId, 
-            CategoryName = i.Category.Name, 
-            ImageUrl = i.ImageUrl,
-            Weight = i.Weight,
-            Width = i.Width,
-            Height = i.Height,
-            Length = i.Length,
-            Desi = (decimal)i.Desi!, 
+            var urunler = await query.Select(i => new UrunViewModel
+            {
+                PurchasePrice = i.PurchasePrice,
+                ProductId = i.ProductId,
+                ProductName = i.ProductName,
+                Price = i.Price,
+                IsActive = i.IsActive,
+                AnaSayfa = i.AnaSayfa,
+                CategoryId = i.CategoryId, 
+                CategoryName = i.Category.Name, 
+                ImageUrl = i.ImageUrl,
+                Weight = i.Weight,
+                Width = i.Width,
+                Height = i.Height,
+                Length = i.Length,
+                Desi = (decimal)i.Desi!, 
+                IsPhysical = i.IsPhysical ?? true,
+                
+                // YENİ: Gerçek depo hareketlerinin (Stocks) toplamını TotalStock'a atıyoruz.
+                // EF Core bunu arka planda SQL SUM() metoduna dönüştürecek.
+                TotalStock = i.Stocks.Sum(s => s.AvailableQuantity), 
+                
+                CarrierNames = i.Carriers.Select(c => c.CarrierName).ToList()
+            }).AsNoTracking().ToListAsync();
             
-            IsPhysical = i.IsPhysical ?? true,
-            Stock = i.Stock ,
-            CarrierNames = i.Carriers.Select(c => c.CarrierName).ToList()
-        }).AsNoTracking().ToListAsync();
-        
+            ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", kategori);
 
-        ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", kategori);
-
-        return View(urunler);
-    }
+            return View(urunler);
+        }
 
         [AllowAnonymous]
         public ActionResult List(string url, string q)
         {
             var query = _context.Products
-            .Where(i => i.IsActive && !i.IsDeleted)
-            .AsQueryable();
+                .Include(i => i.Stocks) // ✅ YENİ: Gerçek stokları hesaplayabilmek için Stocks tablosu dahil edildi
+                .Where(i => i.IsActive && !i.IsDeleted)
+                .AsQueryable();
 
             if (!string.IsNullOrEmpty(url))
             {
@@ -89,7 +90,11 @@ namespace webBackend.Controllers
         [AllowAnonymous]
         public ActionResult Details(int id)
         {
-            var product = _context.Products.Find(id);
+           
+            var product = _context.Products
+                .Include(p => p.Stocks) 
+                .FirstOrDefault(p => p.ProductId == id);
+
             if (product == null)
             {
                 return RedirectToAction("Index", "Home");
@@ -103,12 +108,10 @@ namespace webBackend.Controllers
             return View(product);
         }
 
-        
         [HttpGet]
         public async Task<ActionResult> Create()
         {
             ViewBag.Kategoriler = new SelectList(_context.Categories.ToList(), "Id", "Name");
-            // Aktif kargoları checkbox listesi için gönderiyoruz
             ViewBag.CarrierList = await _context.Carriers.Where(c => (bool)c.IsActive).ToListAsync();
             return View();
         }
@@ -123,7 +126,6 @@ namespace webBackend.Controllers
                 ModelState.AddModelError("ImageFile", "Lütfen bir ürün resmi seçiniz.");
             }
 
-            // --- KRİTİK İŞ KURALI: VALİDASYON ---
             if (model.Price < model.PurchasePrice)
             {
                 ModelState.AddModelError("Price", $"Satış fiyatı, alış fiyatından ({model.PurchasePrice:N2} TL) düşük olamaz.");
@@ -150,9 +152,6 @@ namespace webBackend.Controllers
                     }
                 }
 
-                // =========================
-                // PRODUCT CREATE
-                // =========================
                 var entity = new Product()
                 {
                     ProductName = model.ProductName,
@@ -167,13 +166,9 @@ namespace webBackend.Controllers
                     Width = model.Width,
                     Height = model.Height,
                     Length = model.Length,
-                    IsPhysical = model.IsPhysical ?? true,
-                    Stock = model.Stock
+                    IsPhysical = model.IsPhysical ?? true
                 };
 
-                // =========================
-                // CARRIER RELATION
-                // =========================
                 if (selectedCarrierIds != null)
                 {
                     foreach (var id in selectedCarrierIds)
@@ -202,7 +197,6 @@ namespace webBackend.Controllers
         [Authorize(Policy = "Product.Edit")]
         public async Task<ActionResult> Edit(int id)
         {
-            // include ile Carriers'ı çekiyoruz ki view'da 'checked' yapabilelim
             var product = await _context.Products
                 .Include(p => p.Carriers)
                 .FirstOrDefaultAsync(p => p.ProductId == id);
@@ -225,8 +219,6 @@ namespace webBackend.Controllers
                 Height = product.Height,
                 Length = product.Length,
                 Desi = (int)product.Desi!,
-                Stock = product.Stock,
-                // Modelinde varsa seçili ID'leri gönder:
                 SelectedCarrierIds = product.Carriers.Select(c => c.Id).ToArray() 
             };
 
@@ -246,7 +238,6 @@ namespace webBackend.Controllers
             decimal parsedPrice = 0;
             var culture = new System.Globalization.CultureInfo("tr-TR");
             
-            // Fiyat Dönüşüm kontrolü
             if (!decimal.TryParse(model.Price, System.Globalization.NumberStyles.Any, culture, out parsedPrice))
             {
                 ModelState.AddModelError("Price", "Geçersiz bir satış fiyatı formatı girdiniz.");
@@ -258,17 +249,14 @@ namespace webBackend.Controllers
 
             if (ModelState.IsValid)
             {
-                // Ürünü kargo ilişkisiyle birlikte çekiyoruz
                 var product = await _context.Products.Include(p => p.Carriers).FirstOrDefaultAsync(p => p.ProductId == id);
                 if (product == null) return NotFound();
 
-                // 💡 YENİ RESMİ SUNUCUYA KAYDETME
                 if (model.ImageFile != null && model.ImageFile.Length > 0)
                 {
                     var extension = Path.GetExtension(model.ImageFile.FileName);
                     var fileName = string.Format($"{Guid.NewGuid()}{extension}");
                     
-                    // Yeni resmi wwwroot/img klasörüne kaydediyoruz
                     var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", fileName);
 
                     using (var stream = new FileStream(path, FileMode.Create))
@@ -276,22 +264,16 @@ namespace webBackend.Controllers
                         await model.ImageFile.CopyToAsync(stream);
                     }
 
-                    // ⚠️ UYARINIZ DOĞRULTUSUNDA: Sunucudan eski resmi silme kodunu tamamen kaldırdık!
-                    // Eski resim dosya olarak sunucuda kalmaya devam edecek. 
-                    // Böylece sipariş geçmişindeki (ImageSnapshot) eski linkler kırılmayacak.
-
-                    // Ürünün güncel resim yolunu değiştiriyoruz
                     product.ImageUrl = "/img/" + fileName;
                 }
 
-                // Alanların güncellenmesi
                 product.ProductName = model.ProductName;
                 product.ProductDescription = model.Description; 
                 product.IsActive = model.IsActive;
                 product.Price = parsedPrice; 
                 product.PurchasePrice = model.PurchasePrice;
                 
-                product.Stock = model.Stock;
+                
                 product.Weight = model.Weight;
                 product.Width = model.Width;
                 product.Height = model.Height;
@@ -299,7 +281,6 @@ namespace webBackend.Controllers
                 product.AnaSayfa = model.AnaSayfa;
                 product.CategoryId = model.CategoryId;
 
-                // --- KARGO GÜNCELLEME MANTIĞI ---
                 product.Carriers.Clear(); 
                 if (selectedCarrierIds != null)
                 {
@@ -316,12 +297,12 @@ namespace webBackend.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Hata durumunda form verilerini korumak için listeleri yeniden dolduruyoruz
             ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", model.CategoryId);
             ViewBag.CarrierList = await _context.Carriers.ToListAsync();
             
             return View(model);
         }
+
         [HttpGet]
         [Authorize(Policy = "Product.Delete")]
         public ActionResult Delete(int? Id)
@@ -331,7 +312,6 @@ namespace webBackend.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Sadece silinmemiş olanı getir ki zaten silinmiş bir ürün için onay sayfası açılmasın
             var entity = _context.Products.FirstOrDefault(i => i.ProductId == Id && !i.IsDeleted);
 
             if (entity != null)
@@ -353,7 +333,6 @@ namespace webBackend.Controllers
 
             if (entity != null)
             {
-                // SOFT DELETE (ARŞİVLEME)
                 entity.IsDeleted = true;
                 _context.Entry(entity).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 _context.SaveChanges();
@@ -363,6 +342,5 @@ namespace webBackend.Controllers
 
             return Json(new { success = false, message = "Ürün bulunamadı." });
         }
-
     }
 }

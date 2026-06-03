@@ -57,6 +57,31 @@
                         </ul>
                     </li>
                 }
+
+                @if (User.IsInRole("Admin") || User.HasClaim("Permission", "Warehouse.View"))
+                {
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-success" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-boxes-stacked me-1"></i> Depo Operasyonları
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item fw-bold" asp-controller="Depo" asp-action="StokYonetimi">
+                                <i class="fa-solid fa-list-check text-success me-2"></i>Stok Listesi & Yönetimi
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" asp-controller="Depo" asp-action="MalKabul">
+                                <i class="fa-solid fa-barcode me-2"></i>Mal Kabul & Yerleştirme
+                            </a></li>
+                            <li><a class="dropdown-item" asp-controller="Depo" asp-action="RafDurumu">
+                                <i class="fa-solid fa-server me-2"></i>Raf & Doluluk Durumu
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" asp-controller="Depo" asp-action="StokHareketleri">
+                                <i class="fa-solid fa-clock-rotate-left me-2"></i>Stok Hareketleri (Log)
+                            </a></li>
+                        </ul>
+                    </li>
+                }
             </ul>
 
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">

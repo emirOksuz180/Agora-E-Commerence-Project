@@ -1,0 +1,131 @@
+@model List<webBackend.Models.RafDurumuViewModel>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Raf ve Doluluk Durumu";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 text-dark"><i class="fa-solid fa-server me-2"></i>Depo Kapasite İzleme</h4>
+    <span class="badge bg-primary fs-6">Toplam Aktif Raf: @Model.Count</span>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 row-cols-xl-4 g-4">
+    @foreach (var raf in Model)
+    {
+        // Doluluk oranına göre renk belirleme mantığı
+        string progressBarColor = "bg-success";
+        if (raf.OccupancyRate > 75) progressBarColor = "bg-warning";
+        if (raf.OccupancyRate > 90) progressBarColor = "bg-danger";
+
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 border-bottom border-4 border-secondary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0 fw-bold">
+                            <i class="fa-solid fa-barcode text-muted me-2"></i>@raf.LocationBarcode
+                        </h5>
+                        <span class="badge bg-light text-dark border">
+                            @raf.TotalItems Adet Ürün
+                        </span>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>Doluluk</span>
+                            <span class="fw-bold">@raf.OccupancyRate.ToString("0.##")%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar @progressBarColor" role="progressbar" 
+                                 style="width: @Math.Min(raf.OccupancyRate, 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture)%" 
+                                 aria-valuenow="@raf.OccupancyRate" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+
+                    <div class="text-muted small">
+                        Hacim: <strong>@raf.CurrentVolume.ToString("0.##")</strong> / @raf.MaxVolumeDesi.ToString("0.##") Desi
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 text-center pb-3">
+                    <button class="btn btn-sm btn-outline-secondary w-100" onclick="stoklariGor('@raf.LocationBarcode')">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> İçeriği İncele
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function stoklariGor(barkod) {
+    // 1. Veri gelirken ekranda bir yükleniyor animasyonu gösterelim
+          Swal.fire({
+              title: 'Yükleniyor...',
+              html: '<i class="fa-solid fa-spinner fa-spin fa-2x text-success"></i><br><br>Raf içerikleri getiriliyor',
+              showConfirmButton: false,
+              allowOutsideClick: false
+          });
+
+          // 2. Arka planda Controller'a istek at
+          $.ajax({
+              url: '/Depo/GetRafDetay',
+              type: 'GET',
+              data: { locationBarcode: barkod },
+              success: function (data) {
+                  // Eğer rafta hiç ürün yoksa
+                  if (data.length === 0) {
+                      Swal.fire({
+                          icon: 'info',
+                          title: barkod,
+                          text: 'Bu rafta şu an herhangi bir ürün bulunmuyor.'
+                      });
+                      return;
+                  }
+
+                  // Rafta ürün varsa, SweetAlert içine yerleştirmek için HTML tablo oluştur
+                  let tableHtml = `
+                      <div class="table-responsive">
+                          <table class="table table-sm table-hover table-bordered mt-2 text-start align-middle">
+                              <thead class="table-light">
+                                  <tr>
+                                      <th>Ürün Adı / ID</th>
+                                      <th class="text-center">Kullanılabilir</th>
+                                      <th class="text-center">Rezerve</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                  `;
+
+                  data.forEach(item => {
+                      tableHtml += `
+                          <tr>
+                              <td>
+                                  <span class="fw-bold">${item.urunAdi}</span><br>
+                                  <span class="text-muted small">ID: ${item.productId}</span>
+                              </td>
+                              <td class="text-center"><span class="badge bg-success fs-6">${item.adet}</span></td>
+                              <td class="text-center"><span class="badge bg-warning text-dark">${item.rezerve}</span></td>
+                          </tr>
+                      `;
+                  });
+
+                  tableHtml += `</tbody></table></div>`;
+
+                  // Oluşturduğumuz HTML tabloyu SweetAlert ile ekrana bas
+                  Swal.fire({
+                      title: `<i class="fa-solid fa-boxes-stacked text-primary me-2"></i> ${barkod} Raf İçeriği`,
+                      html: tableHtml,
+                      width: '600px', // Tablo sığsın diye modalı biraz genişletiyoruz
+                      showCloseButton: true,
+                      confirmButtonText: 'Kapat',
+                      confirmButtonColor: '#6c757d'
+                  });
+              },
+              error: function () {
+                  Swal.fire('Hata', 'Raf bilgileri çekilirken sunucu ile bağlantı kurulamadı.', 'error');
+              }
+          });
+      }
+    </script>
+}

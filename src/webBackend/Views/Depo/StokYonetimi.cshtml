@@ -1,0 +1,223 @@
+@model IEnumerable<webBackend.Models.StockListViewModel> 
+@* Not: Yukarıdaki Model yapısını kendi listeleme modeline göre ayarla *@
+
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Stok Yönetim Paneli";
+}
+
+<div class="card shadow border-dark mb-4">
+    <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="fa-solid fa-boxes-stacked me-2"></i>Aktif Stok Listesi ve Yönetimi</h5>
+        <a href="/Depo/MalKabul" class="btn btn-success btn-sm"><i class="fa-solid fa-plus me-1"></i> Yeni Mal Kabul</a>
+    </div>
+    <div class="card-body bg-light">
+        
+        @Html.AntiForgeryToken()
+
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered bg-white shadow-sm align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Ürün ID</th>
+                        <th>Ürün Adı</th>
+                        <th>Lokasyon (Raf)</th>
+                        <th class="text-center">Mevcut Miktar</th>
+                        <th class="text-center" style="width: 200px;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr id="row-@item.ProductId-@item.LocationBarcode">
+                            <td><span class="fw-bold">#@item.ProductId</span></td>
+                            <td>@item.ProductName</td>
+                            <td><span class="badge bg-secondary fs-6">@item.LocationBarcode</span></td>
+                            <td class="text-center fw-bold fs-5 text-primary" id="qty-@item.ProductId-@item.LocationBarcode">
+                                @item.AvailableQuantity
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-warning btn-sm me-1 btn-adjust" 
+                                        data-productid="@item.ProductId" 
+                                        data-productname="@item.ProductName"
+                                        data-barcode="@item.LocationBarcode" 
+                                        data-qty="@item.AvailableQuantity"
+                                        title="Miktarı Düzelt">
+                                    <i class="fa-solid fa-pen-to-square"></i> Düzelt
+                                </button>
+
+                                <button type="button" class="btn btn-danger btn-sm btn-delete" 
+                                        data-productid="@item.ProductId" 
+                                        data-barcode="@item.LocationBarcode"
+                                        title="Stoku Sıfırla">
+                                    <i class="fa-solid fa-trash-can"></i> Sil
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="adjustModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-sliders me-2"></i>Stok Miktarı Düzeltme</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <div class="alert alert-warning small">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Dikkat: Gireceğiniz miktar, raftaki <strong>yeni toplam miktar</strong> olacaktır. Sistem aradaki farkı otomatik hesaplayıp loglayacaktır.
+                </div>
+                <form id="frmAdjust">
+                    <input type="hidden" id="mdlProductId" name="ProductId" />
+                    <input type="hidden" id="mdlLocationBarcode" name="LocationBarcode" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ürün Bilgisi:</label>
+                        <input type="text" id="mdlProductName" class="form-control bg-white" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Raf Konumu:</label>
+                        <input type="text" id="mdlBarcodeDisplay" class="form-control bg-white" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-danger">Yeni Fiili Miktar (Sayılan):</label>
+                        <input type="number" id="mdlNewQuantity" name="NewQuantity" class="form-control form-control-lg fw-bold text-center" min="0" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" id="btnSubmitAdjust" class="btn btn-warning fw-bold">Değişikliği Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            const token = $('input[name="__RequestVerificationToken"]').val();
+
+            // ==========================================
+            // AJUST (GÜNCELLEME) MODAL AÇILIŞ UX
+            // ==========================================
+            $('.btn-adjust').click(function () {
+                let productId = $(this).data('productid');
+                let productName = $(this).data('productname');
+                let barcode = $(this).data('barcode');
+                let currentQty = $(this).data('qty');
+
+                // Modal içerisindeki inputları doldur
+                $('#mdlProductId').val(productId);
+                $('#mdlProductName').val("#" + productId + " - " + productName);
+                $('#mdlLocationBarcode').val(barcode);
+                $('#mdlBarcodeDisplay').val(barcode);
+                $('#mdlNewQuantity').val(currentQty);
+
+                // Modalı Göster ve miktar alanına odaklan
+                $('#adjustModal').modal('show');
+                setTimeout(() => { $('#mdlNewQuantity').focus().select(); }, 500);
+            });
+
+            // ==========================================
+            // AJAX - GÜNCELLEME İSTEĞİ (POST)
+            // ==========================================
+            $('#btnSubmitAdjust').click(function () {
+                let productId = $('#mdlProductId').val();
+                let barcode = $('#mdlLocationBarcode').val();
+                let newQty = $('#mdlNewQuantity').val();
+
+                if (newQty === "" || newQty < 0) {
+                    Swal.fire('Hata', 'Lütfen geçerli bir miktar giriniz.', 'warning');
+                    return;
+                }
+
+                let btn = $(this);
+                btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor...');
+
+                $.ajax({
+                    type: "POST",
+                    url: "/Depo/AdjustStockPost",
+                    data: {
+                        ProductId: productId,
+                        LocationBarcode: barcode,
+                        NewQuantity: newQty,
+                        __RequestVerificationToken: token
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            $('#adjustModal').modal('hide');
+                            Swal.fire('Başarılı!', response.message, 'success');
+                            
+                            // Sayfayı yenilemeden arayüzdeki ilgili satırı güncelle
+                            $(`#qty-${productId}-${barcode}`).text(newQty);
+                            // Butondaki data-qty değerini de güncelle ki tekrar basınca eski veri gelmesin
+                            $(`button[data-productid="${productId}"][data-barcode="${barcode}"]`).data('qty', newQty);
+                        } else {
+                            Swal.fire('İşlem Engellendi!', response.message, 'error');
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Sistem Hatası', 'Veritabanı bağlantısı sağlanamadı.', 'error');
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false).text('Değişikliği Kaydet');
+                    }
+                });
+            });
+
+            // ==========================================
+            // AJAX - SİLME / KAYIT İPTALİ (POST)
+            // ==========================================
+            $('.btn-delete').click(function () {
+                let productId = $(this).data('productid');
+                let barcode = $(this).data('barcode');
+                let row = $(`#row-${productId}-${barcode}`); // Hedef HTML satırı
+
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: `${barcode} rafındaki bu stok kaydı sıfırlanacak ve ekrandan kaldırılacaktır!`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Evet, Sıfırla/Sil',
+                    cancelButtonText: 'Vazgeç'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            type: "POST",
+                            url: "/Depo/DeleteStockPost",
+                            data: {
+                                ProductId: productId,
+                                LocationBarcode: barcode,
+                                __RequestVerificationToken: token
+                            },
+                            success: function (response) {
+                                if (response.success) {
+                                    Swal.fire('Kayıt İptal Edildi!', response.message, 'success');
+                                    
+                                    // Satırı 500ms içinde yavaşça gizleyip DOM ağacından tamamen siliyoruz
+                                    row.fadeOut(500, function () {
+                                        $(this).remove();
+                                    });
+                                } else {
+                                    Swal.fire('Hata!', response.message, 'error');
+                                }
+                            },
+                            error: function () {
+                                Swal.fire('Sistem Hatası', 'İşlem sırasında sunucu hatası oluştu.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}

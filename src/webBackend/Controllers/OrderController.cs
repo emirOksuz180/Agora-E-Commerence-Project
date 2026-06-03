@@ -16,6 +16,7 @@ using webBackend.Helpers;
 using Microsoft.Data.SqlClient;
 namespace webBackend.Controllers;
 using System.Data;
+using System.Globalization;
 
 
 
@@ -94,94 +95,82 @@ public class OrderController : Controller
     }
 
     [Authorize]
-    public async Task<ActionResult> Details(int id , DateTime? startDate,DateTime? endDate,string range)
+public async Task<ActionResult> Details(int id, DateTime? startDate, DateTime? endDate, string range)
+{
+    // ====================================================================
+    // 1. FİLTRE PARAMETRELERİNİ KORUMA (Geri Dön Butonu İçin)
+    // ====================================================================
+    var filter = OrderDateFilterHelper.Resolve(startDate, endDate, range);
+    if (!string.IsNullOrEmpty(filter.error))
     {
-
-        var filter = OrderDateFilterHelper.Resolve(startDate, endDate, range);
-         var username = User.Identity?.Name;
-        if (!string.IsNullOrEmpty(filter.error))
-        {
-            TempData["ErrorMessage"] = filter.error;
-            return RedirectToAction(nameof(OrderList));
-        }
-
-        startDate = filter.start;
-        endDate = filter.end;
-
-
-        if (startDate.HasValue && endDate.HasValue)
-        {
-            if (startDate > endDate)
-            {
-                TempData["ErrorMessage"] = "Geçersiz tarih aralığı tespit edildi.";
-                return RedirectToAction(nameof(OrderList));
-            }
-        }
-
-        if (startDate > DateTime.Today || endDate > DateTime.Today)
-        {
-            TempData["ErrorMessage"] = "Gelecek tarih filtrelemesi engellendi.";
-            return RedirectToAction(nameof(OrderList));
-        }
-
-        var query = _context.Orders
-            .Include(i => i.OrderItems)
-            .ThenInclude(i => i.Urun)
-            .Where(i => i.Username == username);
-
-        if (startDate.HasValue)
-            query = query.Where(o => o.SiparisTarihi >= startDate.Value);
-
-        if (endDate.HasValue)
-        {
-            var end = endDate.Value.Date.AddDays(1).AddTicks(-1);
-            query = query.Where(o => o.SiparisTarihi <= end);
-        }
-
-        var orders = await query
-            .OrderByDescending(i => i.SiparisTarihi)
-            .ToListAsync();
-
-        ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
-        ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
-        ViewBag.Range = range;
-
-
-        var order = await _context.Orders
-            .Include(o => o.Status)
-            .Include(o => o.OrderItems).ThenInclude(i => i.Urun)
-            .FirstOrDefaultAsync(i => i.Id == id);
-
-        if (order == null) return NotFound();
-
-        bool isAdmin = User.IsInRole("Admin");
-   
-
-        if (!isAdmin)
-        {
-            
-            bool isOwner = !string.IsNullOrEmpty(order.Email) && 
-                        order.Email.Trim().Equals(User.Identity.Name?.Trim(), StringComparison.OrdinalIgnoreCase);
-
-            if (!isOwner)
-            {
-                
-                TempData["Error"] = "Bu siparişi görüntüleme yetkiniz bulunmamaktadır.";
-                return RedirectToAction("Index", "Home");
-            }
-        }
-
-        // Layout belirleme
-        ViewBag.IsAdmin = isAdmin;
-        ViewBag.SelectedLayout = isAdmin ? "~/Views/Shared/_AdminLayout.cshtml" : "~/Views/Order/Details.cshtml";
-
-        if (isAdmin)
-        {
-            ViewBag.AllStatuses = await _context.OrderStatuses.ToListAsync();
-        }
-
-        return View(order);
+        TempData["ErrorMessage"] = filter.error;
+        return RedirectToAction(nameof(OrderList));
     }
+
+    startDate = filter.start;
+    endDate = filter.end;
+
+    if (startDate.HasValue && endDate.HasValue && startDate > endDate)
+    {
+        TempData["ErrorMessage"] = "Geçersiz tarih aralığı tespit edildi.";
+        return RedirectToAction(nameof(OrderList));
+    }
+
+    if (startDate > DateTime.Today || endDate > DateTime.Today)
+    {
+        TempData["ErrorMessage"] = "Gelecek tarih filtrelemesi engellendi.";
+        return RedirectToAction(nameof(OrderList));
+    }
+
+    // Filtre değerlerini ViewBag ile View'a taşıyoruz (Ölü kod olan toplu sorgu kaldırıldı)
+    ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
+    ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
+    ViewBag.Range = range;
+
+    // ====================================================================
+    // 2. SİPARİŞ DETAYINI ÇEKME
+    // ====================================================================
+    var order = await _context.Orders
+        .Include(o => o.Status)
+        .Include(o => o.OrderItems).ThenInclude(i => i.Urun)
+        .FirstOrDefaultAsync(i => i.Id == id);
+
+    if (order == null) return NotFound();
+
+    // ====================================================================
+    // 3. GÜVENLİK VE YETKİ KONTROLÜ
+    // ====================================================================
+    bool isAdmin = User.IsInRole("Admin");
+
+    if (!isAdmin)
+    {
+        string currentUsername = User.Identity?.Name;
+        
+        // Eşleşme hatasını önlemek için hem Username hem de Email kontrol ediliyor
+        bool isOwner = (!string.IsNullOrEmpty(order.Username) && order.Username.Equals(currentUsername, StringComparison.OrdinalIgnoreCase)) ||
+                       (!string.IsNullOrEmpty(order.Email) && order.Email.Trim().Equals(currentUsername?.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        if (!isOwner)
+        {
+            TempData["ErrorMessage"] = "Bu siparişi görüntüleme yetkiniz bulunmamaktadır.";
+            return RedirectToAction(nameof(OrderList));
+        }
+    }
+
+    // ====================================================================
+    // 4. ARAYÜZ (LAYOUT) VE ADMİN AYARLARI
+    // ====================================================================
+    ViewBag.IsAdmin = isAdmin;
+    ViewBag.SelectedLayout = isAdmin ? "~/Views/Shared/_AdminLayout.cshtml" : "~/Views/Order/Details.cshtml";
+
+    if (isAdmin)
+    {
+        // Admin statü değiştirebilsin diye tüm listeyi çekiyoruz
+        ViewBag.AllStatuses = await _context.OrderStatuses.ToListAsync();
+    }
+
+    return View(order);
+}
 
     [HttpGet]
     public async Task<ActionResult> Checkout()
@@ -432,12 +421,24 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
         return View("Completed", orderId);
     }
 
+    private Options GetIyzipayOptions()
+    {
+        return new Options
+        {
+            ApiKey = _configuration["PaymentAPI:APIKey"],
+            SecretKey = _configuration["PaymentAPI:SecretKey"],
+            BaseUrl = "https://sandbox-api.iyzipay.com" // Canlı ortam için: https://api.iyzipay.com
+        };
+    }
+
+    // ==========================================
+    // 1. SİPARİŞ LİSTELEME
+    // ==========================================
     public async Task<ActionResult> OrderList(DateTime? startDate, DateTime? endDate, string range)
     {
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username)) return RedirectToAction("Login", "Account");
 
-        // Yardımcı sınıf ile tarihleri çöz
         var filter = OrderDateFilterHelper.Resolve(startDate, endDate, range);
 
         if (!string.IsNullOrEmpty(filter.error))
@@ -449,7 +450,6 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
         startDate = filter.start;
         endDate = filter.end;
 
-        // Tarih Mantık Kontrolleri
         if (startDate.HasValue && endDate.HasValue && startDate > endDate)
         {
             TempData["ErrorMessage"] = "Geçersiz tarih aralığı tespit edildi.";
@@ -462,7 +462,6 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
             return RedirectToAction(nameof(OrderList));
         }
 
-      
         var query = _context.Orders
             .Include(i => i.OrderItems) 
             .Include(i => i.Status)     
@@ -488,166 +487,228 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
         return View(orders);
     }
 
-
-
+    // ==========================================
+    // 2. ADMİN PANELİ STATÜ GÜNCELLEME (İptal ve İade Dahil)
+    // ==========================================
         [HttpPost]
         [Authorize(Policy = "Order.Edit")]
         [ValidateAntiForgeryToken] 
         public async Task<IActionResult> UpdateStatus(int orderId, int newStatusId)
         {
-            // OrderItems ve Urun bilgilerini de çekmemiz gerekiyor (Stok güncellemesi için)
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
-                .ThenInclude(i => i.Urun)
                 .FirstOrDefaultAsync(o => o.Id == orderId);
             
-            if (order == null) 
-            {
-                return NotFound();
-            }
+            if (order == null) return NotFound();
 
-            // Mevcut statüyü yedekleyelim (Değişim kontrolü için)
-            int ?oldStatusId = order.StatusId;
+            // HATA ÇÖZÜMÜ: order.StatusId null gelme ihtimaline karşı güvenli hale getirildi.
+            int oldStatusId = order.StatusId ?? 0;
 
-            // --- STOK YÖNETİMİ MANTIĞI ---
+            // Eğer statü değişmiyorsa işlem yapma
+            if (oldStatusId == newStatusId) return RedirectToAction("Index");
 
-            // 1. İade Tamamlandığında (7 -> 8 geçişi) stokları geri al
-            if (oldStatusId == 7 && newStatusId == 8)
-            {
-                foreach (var item in order.OrderItems)
-                {
-                    if (item.Urun != null)
-                    {
-                        item.Urun.Stock += item.Miktar;
-                    }
-                }
-                TempData["SuccessMessage"] = $"#{orderId} nolu siparişin iadesi onaylandı ve stoklar geri yüklendi.";
-            }
-            // 2. Sipariş İptal Edildiğinde (1-4 arası -> 9 geçişi) stokları geri al
-            else if (oldStatusId < 5 && newStatusId == 9)
-            {
-                foreach (var item in order.OrderItems)
-                {
-                    if (item.Urun != null)
-                    {
-                        item.Urun.Stock += item.Miktar;
-                    }
-                }
-                TempData["SuccessMessage"] = $"#{orderId} nolu sipariş iptal edildi ve stoklar güncellendi.";
-            }
-
-            // Statü güncelleme
-            order.StatusId = newStatusId;
+            // Güvenli veritabanı stratejisi başlatıyoruz
+            var strategy = _context.Database.CreateExecutionStrategy();
             
-            try 
+            try
             {
-                await _context.SaveChangesAsync();
-                
-                // Eğer yukarıdaki özel mesajlar dolmadıysa genel başarı mesajını ver
-                if (TempData["SuccessMessage"] == null)
+                return await strategy.ExecuteAsync(async () =>
                 {
-                    TempData["SuccessMessage"] = $"#{orderId} nolu siparişin durumu başarıyla güncellendi.";
-                }
-            }
-            catch (Exception)
-            {
-                TempData["ErrorMessage"] = "Sipariş güncellenirken bir hata oluştu.";
-            }
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    
+                    // --- SENARYO A: ADMİN TARAFINDAN İADE ONAYLAMA (7 -> 8 Geçişi) ---
+                    if (oldStatusId == 7 && newStatusId == 8)
+                    {
+                        // Ücretsiz sipariş değilse ve PaymentId varsa Iyzico İade Tetikle
+                        if (!string.IsNullOrEmpty(order.PaymentId) && order.PaymentId != "FREE")
+                        {
+                            // DB'de kırılım (TransactionId) olmadığı için ŞİMDİLİK Cancel ile tam iade yapıyoruz
+                            var request = new CreateCancelRequest
+                            {
+                                Locale = Locale.TR.ToString(),
+                                ConversationId = Guid.NewGuid().ToString(),
+                                PaymentId = order.PaymentId, // Alt kırılımlara gerek kalmadan ana ödemeyi iade/iptal eder
+                                Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1"
+                            };
 
-            return RedirectToAction("Index"); 
+                            // HATA ÇÖZÜMÜ: await eklendi
+                            Cancel result = await Cancel.Create(request, GetIyzipayOptions());
+
+                            if (result.Status != Status.SUCCESS.ToString())
+                            {
+                                TempData["ErrorMessage"] = "Iyzico İade Hatası: " + result.ErrorMessage;
+                                return RedirectToAction("Index");
+                            }
+                        }
+
+                        // Ödeme iadesi başarılı ise stokları geri yükle
+                        await StoklariGeriYukleAsync(order);
+                        TempData["SuccessMessage"] = $"#{orderId} nolu siparişin iadesi onaylandı, ücret karta aktarıldı ve stoklar geri yüklendi.";
+                    }
+
+                    // --- SENARYO B: ADMİN TARAFINDAN SİPARİŞ İPTALİ (1 ile 4 arası -> 9 Geçişi) ---
+                    else if (oldStatusId <= 4 && newStatusId == 9)
+                    {
+                        if (!string.IsNullOrEmpty(order.PaymentId) && order.PaymentId != "FREE")
+                        {
+                            var request = new CreateCancelRequest
+                            {
+                                Locale = Locale.TR.ToString(),
+                                ConversationId = Guid.NewGuid().ToString(),
+                                PaymentId = order.PaymentId,
+                                Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1"
+                            };
+
+                            // HATA ÇÖZÜMÜ: await eklendi
+                            Cancel result = await Cancel.Create(request, GetIyzipayOptions());
+
+                            if (result.Status != Status.SUCCESS.ToString())
+                            {
+                                TempData["ErrorMessage"] = "Iyzico İptal Hatası: " + result.ErrorMessage;
+                                return RedirectToAction("Index");
+                            }
+                        }
+
+                        // Ödeme iptali başarılı ise stokları geri yükle
+                        await StoklariGeriYukleAsync(order);
+                        TempData["SuccessMessage"] = $"#{orderId} nolu sipariş admin tarafından iptal edildi, ücret iade edildi ve stoklar güncellendi.";
+                    }
+                    else
+                    {
+                        TempData["SuccessMessage"] = $"#{orderId} nolu sipariş durumu başarıyla güncellendi.";
+                    }
+
+                    // Statüyü güncelle ve kaydet
+                    order.StatusId = newStatusId;
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return RedirectToAction("Index");
+                });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "Sipariş güncellenirken sistemsel bir hata oluştu: " + ex.Message;
+                return RedirectToAction("Index");
+            }
         }
 
-
+    // ==========================================
+    // 3. KULLANICI TARAFINDAN İADE TALEBİ (Sadece 6. Statüdeyken)
+    // ==========================================
     [HttpPost]
     [Authorize]
     public async Task<IActionResult> UserRequestReturn(int orderId)
     {
-        // Siparişi çek
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
-
         if (order == null) return NotFound();
 
-        
-        string currentUserEmail = User.Identity.Name;
-        if (order.Email != currentUserEmail && !User.IsInRole("Admin"))
+        // Güvenlik Kontrolü (Username bazlı eşitleme yapıldı)
+        string currentUsername = User.Identity?.Name;
+        if (!string.Equals(order.Username, currentUsername, StringComparison.OrdinalIgnoreCase) && !User.IsInRole("Admin"))
         {
             return Forbid();
         }
 
-        
+        // Sadece Teslim Edildi (6) durumundaysa İade Talep Edildi (7) olabilir
         if (order.StatusId == 6)
         {
             order.StatusId = 7; 
             await _context.SaveChangesAsync();
-            TempData["Message"] = "İade talebiniz başarıyla oluşturuldu.";
+            TempData["Message"] = "İade talebiniz başarıyla oluşturuldu. Depo kontrolü sonrası onaylanacaktır.";
         }
         else
         {
-            TempData["Error"] = "Bu sipariş için şu an iade talebi oluşturulamaz.";
+            TempData["Error"] = "Bu siparişin mevcut durumundan ötürü iade talebi oluşturulamaz.";
         }
 
         return RedirectToAction(nameof(Details), new { id = orderId });
     }
 
-
+    // ==========================================
+    // 4. KULLANICI TARAFINDAN SİPARİŞ İPTALİ (2 ile 4 Statüleri Arası)
+    // ==========================================
     [HttpPost]
-    [Authorize]
-    public async Task<IActionResult> CancelOrder(int orderId)
+[Authorize]
+public async Task<IActionResult> CancelOrder(int orderId)
+{
+    var order = await _context.Orders
+        .Include(o => o.OrderItems)
+        .FirstOrDefaultAsync(o => o.Id == orderId);
+
+    if (order == null) return NotFound();
+
+    // Güvenlik Kontrolü (Username bazlı eşitleme yapıldı)
+    string currentUsername = User.Identity?.Name;
+    if (!string.Equals(order.Username, currentUsername, StringComparison.OrdinalIgnoreCase) && !User.IsInRole("Admin"))
     {
-        var order = await _context.Orders
-            .Include(o => o.OrderItems)
-            .FirstOrDefaultAsync(o => o.Id == orderId);
+        return Forbid();
+    }
 
-        if (order == null) return NotFound();
+    // Kullanıcı 2 (Onaylandı) ile 4 (Hazırlanıyor / Depoda) arasındaki statülerde iptal edebilir
+    if (order.StatusId >= 2 && order.StatusId <= 4) 
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
 
-        // 1. Güvenlik ve Durum Kontrolü (Aynı kalıyor)
-        if (!User.IsInRole("Admin") && !order.Email.ToLower().Equals(User.Identity.Name.ToLower()))
-            return Forbid();
-
-        if (order.StatusId <= 4) 
+        try
         {
-            // 2. Iyzico İptal İşlemi (Doğrudan Kütüphane Kullanımı)
-            if (!string.IsNullOrEmpty(order.PaymentId))
+            return await strategy.ExecuteAsync(async () =>
             {
-                // Iyzico Ayarları (ProcessPayment içindekiyle aynı olmalı)
-                Options options = new Options
-                {
-                    ApiKey = _configuration["PaymentAPI:APIKey"],
-                    SecretKey = _configuration["PaymentAPI:SecretKey"],
-                    BaseUrl = "https://sandbox-api.iyzipay.com" 
-                };
+                using var transaction = await _context.Database.BeginTransactionAsync();
 
-                CreateCancelRequest request = new CreateCancelRequest
+                // Iyzico İptal İşlemi
+                if (!string.IsNullOrEmpty(order.PaymentId) && order.PaymentId != "FREE")
                 {
-                    Locale = Locale.TR.ToString(),
-                    ConversationId = Guid.NewGuid().ToString(),
-                    PaymentId = order.PaymentId,
-                    Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1"
-                };
+                    CreateCancelRequest request = new CreateCancelRequest
+                    {
+                        Locale = Locale.TR.ToString(),
+                        ConversationId = Guid.NewGuid().ToString(),
+                        PaymentId = order.PaymentId,
+                        Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1"
+                    };
 
-                // DİKKAT: Servis çağırmak yerine doğrudan Iyzico'nun Cancel nesnesini kullanıyoruz
-                Cancel result = await Cancel.Create(request, options);
+                    // HATA BURADAYDI: await eklendi
+                    Cancel result = await Cancel.Create(request, GetIyzipayOptions());
 
-                if (result.Status != Status.SUCCESS.ToString())
-                {
-                    TempData["Error"] = "İade hatası: " + result.ErrorMessage;
-                    return RedirectToAction(nameof(Details), new { id = orderId });
+                    if (result.Status != Status.SUCCESS.ToString())
+                    {
+                        TempData["Error"] = "Iyzico İptal Hatası: " + result.ErrorMessage;
+                        return RedirectToAction(nameof(Details), new { id = orderId });
+                    }
                 }
-            }
 
-            // 3. Başarılı ise DB Güncelleme ve Stok İadesi
-            order.StatusId = 9; 
-            foreach (var item in order.OrderItems)
-            {
-                var urun = await _context.Products.FindAsync(item.UrunId);
-                if (urun != null) urun.Stock += item.Miktar;
-            }
+                // Statüyü İptal Edildi (9) yap ve Stokları SP ile geri yükle
+                order.StatusId = 9; 
+                await StoklariGeriYukleAsync(order);
 
-            await _context.SaveChangesAsync();
-            TempData["Message"] = "Sipariş iptal edildi, ücret iadesi yapıldı.";
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Message"] = "Siparişiniz başarıyla iptal edildi, ücret iadeniz yapıldı ve stoklar güncellendi.";
+                return RedirectToAction(nameof(Details), new { id = orderId });
+            });
         }
-        
-        return RedirectToAction(nameof(Details), new { id = orderId });
+        catch (Exception ex)
+        {
+            TempData["Error"] = "İptal işlemi sırasında teknik bir hata oluştu: " + ex.Message;
+            return RedirectToAction(nameof(Details), new { id = orderId });
+        }
+    }
+    
+    TempData["Error"] = "Kargoya verilen veya tamamlanan siparişler iptal edilemez. İade sürecini başlatmanız gerekir.";
+    return RedirectToAction(nameof(Details), new { id = orderId });
+}
+
+    // ==========================================
+    // YARDIMCI METOT: STOKLARI GÜVENLİ TETİKLEME
+    // ==========================================
+    private async Task StoklariGeriYukleAsync(Order order)
+    {
+        foreach (var item in order.OrderItems)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC sp_SiparisIptalIcinStokIade @p0, @p1", item.UrunId, item.Miktar);
+        }
     }
 
 

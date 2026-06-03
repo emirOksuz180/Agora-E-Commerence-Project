@@ -32,171 +32,145 @@ public class CheckoutService : ICheckoutService
     }
 
     public async Task<CheckoutResult> ProcessCheckoutAsync(OrderCreateModel model, Cart cart, int userId, string username, string userIp)
-{
-    try
     {
-        string finalAd = "", finalSoyad = "", finalTelefon = "", finalSehir = "", finalAdres = "", finalZip = "", finalIlceOrAddress = "";
-
-        // ====================================================================
-        // 1. ADRES ÇÖZÜMLEME (Dışarıda, Transaction gerektirmez)
-        // ====================================================================
-        if (model.UseDefaultAddress)
+        try
         {
-            var defaultAddress = await _context.UserAddresses
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.UserId == userId && a.IsDefault);
+            string finalAd = "", finalSoyad = "", finalTelefon = "", finalSehir = "", finalAdres = "", finalZip = "", finalIlceOrAddress = "";
 
-            if (defaultAddress == null || string.IsNullOrEmpty(defaultAddress.FirstName))
-                return new CheckoutResult { IsSuccess = false, ErrorMessage = "Varsayılan adres bilgileriniz eksik. Lütfen yeni adres girin." };
-
-            finalAd = defaultAddress.FirstName;
-            finalSoyad = defaultAddress.LastName;
-            finalTelefon = defaultAddress.Phone;
-            finalSehir = defaultAddress.City;
-            finalAdres = defaultAddress.AddressDetail;
-            finalZip = defaultAddress.ZipCode ?? "34000";
-            finalIlceOrAddress = defaultAddress.District ?? defaultAddress.AddressDetail;
-        }
-        else
-        {
-            finalAd = model.Ad;
-            finalSoyad = model.Soyad;
-            finalTelefon = model.Telefon;
-            finalSehir = model.Sehir;
-            finalAdres = model.AdresSatiri;
-            finalZip = model.PostaKodu;
-            finalIlceOrAddress = !string.IsNullOrEmpty(model.Ilce) ? model.Ilce : model.AdresSatiri;
-        }
-
-        // ====================================================================
-        // 2. KARGO HESAPLAMA (Stored Procedure - Dışarıda çalışabilir)
-        // ====================================================================
-        var city = await _context.TblIls.FirstOrDefaultAsync(x => x.IlAdi == finalSehir);
-        if (city == null) return new CheckoutResult { IsSuccess = false, ErrorMessage = "Seçilen şehir sistemde doğrulanamadı." };
-
-        var district = await _context.TblIlces.FirstOrDefaultAsync(x => (x.IlceAdi == finalIlceOrAddress || x.IlceAdi == finalAdres) && x.IlId == city.Id);
-
-        var pCartId = new SqlParameter("@CartId", cart.CartId);
-        var pDistrictId = new SqlParameter("@DistrictId", district?.Id ?? (object)DBNull.Value);
-        var pCarrierId = new SqlParameter("@SelectedCarrierId", model.SelectedCarrierId);
-        var pOutPrice = new SqlParameter("@FinalShippingPrice", SqlDbType.Decimal) { Direction = ParameterDirection.Output, Precision = 18, Scale = 2 };
-        var pIsFree = new SqlParameter("@IsFreeShipping", SqlDbType.Bit) { Direction = ParameterDirection.Output };
-
-        await _context.Database.ExecuteSqlRawAsync(
-            "EXEC [dbo].[sp_CalculateShippingProfitability] @CartId, @DistrictId, @SelectedCarrierId, @FinalShippingPrice OUTPUT, @IsFreeShipping OUTPUT",
-            pCartId, pDistrictId, pCarrierId, pOutPrice, pIsFree);
-
-        decimal finalKargoUcreti = (pOutPrice.Value != DBNull.Value) ? Convert.ToDecimal(pOutPrice.Value) : 75;
-
-        if (finalKargoUcreti < 0)
-            return new CheckoutResult { IsSuccess = false, ErrorMessage = "Seçilen kargo firması bu bölgeye hizmet verememektedir." };
-
-        double genelToplam = (double)cart.Toplam + (double)finalKargoUcreti;
-
-        // ====================================================================
-        // 3. IYZICO ÖDEME SÜRECİ (API isteğidir, DB Transaction'ı dışında olmalıdır)
-        // ====================================================================
-        ProcessPaymentResult payment;
-        if (genelToplam <= 0)
-        {
-            payment = new ProcessPaymentResult { Status = "success", PaymentId = "FREE", ConversationId = "FREE" };
-        }
-        else
-        {
-            payment = await ProcessPaymentInternalAsync(model, cart, finalAd, finalSoyad, finalTelefon, finalSehir, finalAdres, finalZip, finalKargoUcreti, userIp, username);
-        }
-
-        // Ödeme başarısızsa doğrudan hatayı dön (DB'ye dokunmadık, Rollback'e gerek yok)
-        if (payment == null || payment.Status != "success")
-        {
-            string customError = payment?.ErrorMessage;
-            if (customError != null && customError.Contains("basketItemPrice"))
-                customError = "Fiyat uyumsuzluğu nedeniyle işlem iptal edildi. Sepetinizi kontrol edin.";
-
-            return new CheckoutResult { IsSuccess = false, ErrorMessage = customError ?? "Ödeme hatası oluştu." };
-        }
-
-     
-        // 4. İŞLEM 
-        
-        
-        
-        var strategy = _context.Database.CreateExecutionStrategy();
-
-        return await strategy.ExecuteAsync(async () =>
-        {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // 1. ADRES ÇÖZÜMLEME
+            if (model.UseDefaultAddress)
             {
-                var order = new Order
+                var defaultAddress = await _context.UserAddresses
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.UserId == userId && a.IsDefault);
+
+                if (defaultAddress == null || string.IsNullOrEmpty(defaultAddress.FirstName))
+                    return new CheckoutResult { IsSuccess = false, ErrorMessage = "Varsayılan adres bilgileriniz eksik." };
+
+                finalAd = defaultAddress.FirstName;
+                finalSoyad = defaultAddress.LastName;
+                finalTelefon = defaultAddress.Phone;
+                finalSehir = defaultAddress.City;
+                finalAdres = defaultAddress.AddressDetail;
+                finalZip = defaultAddress.ZipCode ?? "34000";
+                finalIlceOrAddress = defaultAddress.District ?? defaultAddress.AddressDetail;
+            }
+            else
+            {
+                finalAd = model.Ad;
+                finalSoyad = model.Soyad;
+                finalTelefon = model.Telefon;
+                finalSehir = model.Sehir;
+                finalAdres = model.AdresSatiri;
+                finalZip = model.PostaKodu;
+                finalIlceOrAddress = !string.IsNullOrEmpty(model.Ilce) ? model.Ilce : model.AdresSatiri;
+            }
+
+            // 2. KARGO HESAPLAMA
+            var city = await _context.TblIls.FirstOrDefaultAsync(x => x.IlAdi == finalSehir);
+            if (city == null) return new CheckoutResult { IsSuccess = false, ErrorMessage = "Seçilen şehir sistemde doğrulanamadı." };
+
+            var district = await _context.TblIlces.FirstOrDefaultAsync(x => (x.IlceAdi == finalIlceOrAddress || x.IlceAdi == finalAdres) && x.IlId == city.Id);
+
+            var pCartId = new SqlParameter("@CartId", cart.CartId);
+            var pDistrictId = new SqlParameter("@DistrictId", district?.Id ?? (object)DBNull.Value);
+            var pCarrierId = new SqlParameter("@SelectedCarrierId", model.SelectedCarrierId);
+            var pOutPrice = new SqlParameter("@FinalShippingPrice", SqlDbType.Decimal) { Direction = ParameterDirection.Output, Precision = 18, Scale = 2 };
+            var pIsFree = new SqlParameter("@IsFreeShipping", SqlDbType.Bit) { Direction = ParameterDirection.Output };
+
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC [dbo].[sp_CalculateShippingProfitability] @CartId, @DistrictId, @SelectedCarrierId, @FinalShippingPrice OUTPUT, @IsFreeShipping OUTPUT",
+                pCartId, pDistrictId, pCarrierId, pOutPrice, pIsFree);
+
+            decimal finalKargoUcreti = (pOutPrice.Value != DBNull.Value) ? Convert.ToDecimal(pOutPrice.Value) : 75;
+            if (finalKargoUcreti < 0) return new CheckoutResult { IsSuccess = false, ErrorMessage = "Kargo hizmeti verilememektedir." };
+
+            double genelToplam = (double)cart.Toplam + (double)finalKargoUcreti;
+
+            // 3. IYZICO ÖDEME SÜRECİ
+            ProcessPaymentResult payment = (genelToplam <= 0) 
+                ? new ProcessPaymentResult { Status = "success", PaymentId = "FREE", ConversationId = "FREE" }
+                : await ProcessPaymentInternalAsync(model, cart, finalAd, finalSoyad, finalTelefon, finalSehir, finalAdres, finalZip, finalKargoUcreti, userIp, username);
+
+            if (payment == null || payment.Status != "success")
+                return new CheckoutResult { IsSuccess = false, ErrorMessage = payment?.ErrorMessage ?? "Ödeme hatası oluştu." };
+
+            // 4. İŞLEM (Sipariş Kaydı + Stok Düşme)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    Username = username,
-                    Ad = finalAd ?? "",
-                    Soyad = finalSoyad ?? "",
-                    Telefon = finalTelefon ?? "",
-                    Email = model.Email ?? username,
-                    Sehir = finalSehir ?? "",
-                    AdresSatiri = finalAdres ?? "",
-                    PostaKodu = finalZip ?? "34000",
-                    ToplamFiyat = genelToplam,
-                    SiparisTarihi = DateTime.Now,
-                    StatusId = 2,
-                    PaymentId = payment.PaymentId,
-                    ConversationId = payment.ConversationId,
-                    SiparisNotu = model.SiparisNotu
-                };
+                    var order = new Order
+                    {
+                        Username = username,
+                        Ad = finalAd ?? "",
+                        Soyad = finalSoyad ?? "",
+                        Telefon = finalTelefon ?? "",
+                        Email = model.Email ?? username,
+                        Sehir = finalSehir ?? "",
+                        AdresSatiri = finalAdres ?? "",
+                        PostaKodu = finalZip ?? "34000",
+                        ToplamFiyat = genelToplam,
+                        SiparisTarihi = DateTime.Now,
+                        StatusId = 2,
+                        PaymentId = payment.PaymentId,
+                        ConversationId = payment.ConversationId,
+                        SiparisNotu = model.SiparisNotu
+                    };
 
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
+                    _context.Orders.Add(order);
+                    await _context.SaveChangesAsync();
 
-                var shippingDetail = new OrderShippingDetail
-                {
-                    OrderId = order.Id,
-                    CarrierId = model.SelectedCarrierId,
-                    ShippingPrice = finalKargoUcreti,
-                    CreatedAt = DateTime.Now
-                };
-                _context.OrderShippingDetails.Add(shippingDetail);
-
-                foreach (var cartItem in cart.CartItems)
-                {
-                    var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.ProductId == cartItem.UrunId);
-
-                    var orderItem = new webBackend.Models.OrderItem
+                    _context.OrderShippingDetails.Add(new OrderShippingDetail
                     {
                         OrderId = order.Id,
-                        UrunId = cartItem.UrunId,
-                        Miktar = cartItem.Miktar,
-                        ProductNameSnapshot = product?.ProductName ?? "Ürün Silinmiş",
-                        ProductImageSnapshot = product?.ImageUrl ?? "/img/no-image.jpg",
-                        PriceAtOrder = product?.Price ?? 0,
-                        ProductCodeSnapshot = product?.ProductId.ToString() ?? "0",
-                        Fiyat = (double)(product?.Price ?? 0)
-                    };
-                    _context.OrderItems.Add(orderItem);
+                        CarrierId = model.SelectedCarrierId,
+                        ShippingPrice = finalKargoUcreti,
+                        CreatedAt = DateTime.Now
+                    });
+
+                    foreach (var cartItem in cart.CartItems)
+                    {
+                        var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.ProductId == cartItem.UrunId);
+
+                        // Stok Düşme SP Çağrısı
+                        await _context.Database.ExecuteSqlRawAsync(
+                            "EXEC sp_SiparisIcinStokDus @ProductId = {0}, @SiparisMiktari = {1}", 
+                            cartItem.UrunId, cartItem.Miktar);
+
+                        _context.OrderItems.Add(new webBackend.Models.OrderItem
+                        {
+                            OrderId = order.Id,
+                            UrunId = cartItem.UrunId,
+                            Miktar = cartItem.Miktar,
+                            ProductNameSnapshot = product?.ProductName ?? "Ürün Silinmiş",
+                            ProductImageSnapshot = product?.ImageUrl ?? "/img/no-image.jpg",
+                            PriceAtOrder = product?.Price ?? 0,
+                            ProductCodeSnapshot = product?.ProductId.ToString() ?? "0",
+                            Fiyat = (double)(product?.Price ?? 0)
+                        });
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await _cartService.ClearCart();
+                    await transaction.CommitAsync();
+
+                    return new CheckoutResult { IsSuccess = true, OrderId = order.Id };
                 }
-
-                await _context.SaveChangesAsync();
-
-                // 5. SEPETİ TEMİZLE VE TRANSACTION COMMIT ET
-                await _cartService.ClearCart();
-                await transaction.CommitAsync();
-
-                return new CheckoutResult { IsSuccess = true, OrderId = order.Id };
-            }
-            catch (Exception)
-            {
-                // DB aşamasında hata olursa transaction'ı güvenle geri alıyoruz
-                await transaction.RollbackAsync();
-                throw; // Dışarıdaki genel catch bloğunun yakalaması için hatayı fırlat
-            }
-        });
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw; 
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return new CheckoutResult { IsSuccess = false, ErrorMessage = "İşlem sırasında hata oluştu: " + ex.Message };
+        }
     }
-    catch (Exception ex)
-    {
-        return new CheckoutResult { IsSuccess = false, ErrorMessage = "İşlem sırasında beklenmedik bir hata oluştu: " + ex.Message };
-    }
-}
 
     private async Task<ProcessPaymentResult> ProcessPaymentInternalAsync(
         OrderCreateModel model,

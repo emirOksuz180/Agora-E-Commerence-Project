@@ -17,6 +17,7 @@
                 }
             </div>
             <div class="card-body">
+                @Html.AntiForgeryToken()
                 @if(User.IsInRole("Admin") || User.HasClaim("Permission", "Product.View")) {
                     <form method="get">
                         <div class="input-group mb-3">
@@ -41,11 +42,8 @@
                                     <th style="width: 50px;">ID</th>
                                     <th style="width: 70px;">Resim</th>
                                     <th>Ürün Adı</th>
-                                    
-                                    @* 💡 YENİ EKLENEN SÜTUN BAŞLIKLARI *@
                                     <th>Alış Fiyatı</th>
                                     <th>Satış Fiyatı</th>
-                                    
                                     <th style="width: 80px;">Stok</th>
                                     <th style="width: 50px;">Aktif</th>
                                     <th style="width: 50px;">AnaS.</th>
@@ -66,25 +64,24 @@
                                         </td>
                                         <td class="fw-bold">@urun.ProductName</td>
                                         
-                                        @* 💡 YENİ EKLENEN SÜTUN İÇERİKLERİ *@
                                         <td class="text-nowrap text-end text-muted">@urun.PurchasePrice.ToString("C2")</td>
                                         <td class="text-nowrap text-end fw-bold text-success">@urun.Price.ToString("C2")</td>
                                         
-                                        @* Stok Kolonu Entegrasyonu *@
+                                        @* --- DİNAMİK STOK (TOTALSTOCK) ENTEGRASYONU --- *@
                                         <td class="text-center">
-                                            @if (urun.Stock <= 0) {
+                                            @if (urun.TotalStock <= 0) {
                                                 <span class="badge bg-secondary w-100">Tükendi</span>
-                                            } else if (urun.Stock <= 5) {
+                                            } else if (urun.TotalStock <= 5) {
                                                 <span class="badge bg-danger shadow-sm w-100" title="Kritik Stok Seviyesi">
-                                                    <i class="fa-solid fa-fire-flame-curved me-1"></i> @urun.Stock
+                                                    <i class="fa-solid fa-fire-flame-curved me-1"></i> @urun.TotalStock
                                                 </span>
-                                            } else if (urun.Stock <= 20) {
+                                            } else if (urun.TotalStock <= 20) {
                                                 <span class="badge bg-warning text-dark w-100" title="Stok Azalıyor">
-                                                    @urun.Stock
+                                                    @urun.TotalStock
                                                 </span>
                                             } else {
                                                 <span class="badge border text-dark w-100">
-                                                    @urun.Stock
+                                                    @urun.TotalStock
                                                 </span>
                                             }
                                         </td>
@@ -168,8 +165,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         window.deleteProduct = function(productId, productName) {
-            console.log("Fonksiyon tetiklendi:", productId);
-
             Swal.fire({
                 title: 'Emin misiniz?',
                 text: productName + " ürünü arşive taşınacak!",
@@ -185,6 +180,7 @@
                         url: "/Urun/Delete", 
                         data: { 
                             Id: productId,
+                            // AntiForgery Token'ı JS tarafından başarıyla yakalamışsın, harika!
                             "__RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val() 
                         },
                         success: function (response) {

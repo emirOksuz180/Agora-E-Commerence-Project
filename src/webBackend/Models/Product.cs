@@ -52,4 +52,6 @@ public partial class Product
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
     public virtual ICollection<Carrier> Carriers { get; set; } = new List<Carrier>();
+
+    public virtual ICollection<Stock> Stocks { get; set; } = new List<Stock>();
 }
