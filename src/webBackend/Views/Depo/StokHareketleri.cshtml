@@ -2,57 +2,57 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Stok Hareketleri Geçmişi";
-    
-    // Pagination değişkenlerini alıyoruz
+
     int currentPage = ViewBag.CurrentPage ?? 1;
     int totalPages = ViewBag.TotalPages ?? 1;
-    // Filtre değerlerini alıyoruz (Controller'dan gelen)
-    string startDate = ViewBag.StartDate;
-    string endDate = ViewBag.EndDate;
+    var filter = (webBackend.Models.StokHareketFilterViewModel)ViewBag.Filter;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0 text-dark"><i class="fa-solid fa-clock-rotate-left me-2"></i>Son İşlemler (Log)</h4>
+    <h4 class="mb-0 text-dark"><i class="fa-solid fa-clock-rotate-left me-2"></i>Stok Hareket Geçmişi</h4>
     <span class="badge bg-secondary fs-6">Sayfa @currentPage / @totalPages</span>
 </div>
 
 <form method="get" id="filterForm" class="row g-3 mb-4 bg-white p-3 rounded shadow-sm border">
-    <div class="col-md-4">
-        <label class="form-label small fw-bold">Başlangıç Tarihi</label>
-        <input type="date" id="startDate" name="startDate" class="form-control" value="@startDate">
+    <div class="col-md-3">
+        <label class="form-label small fw-bold">Ürün Adı</label>
+        <input type="text" name="ProductName" value="@filter?.ProductName" class="form-control" placeholder="Ürün adı ara...">
     </div>
-    <div class="col-md-4">
-        <label class="form-label small fw-bold">Bitiş Tarihi</label>
-        <input type="date" id="endDate" name="endDate" class="form-control" value="@endDate">
+    <div class="col-md-3">
+        <label class="form-label small fw-bold">Lokasyon Barkod</label>
+        <input type="text" name="LocationBarcode" value="@filter?.LocationBarcode" class="form-control" placeholder="Barkod...">
     </div>
-    <div class="col-md-4 d-flex align-items-end gap-2">
+    <div class="col-md-3">
+        <label class="form-label small fw-bold">Hareket Tipi</label>
+        <select name="MovementType" class="form-select">
+            <option value="">Tümü</option>
+            <option value="Mal Kabul" selected="@(filter?.MovementType == "Mal Kabul")">Mal Kabul</option>
+            <option value="Sipariş" selected="@(filter?.MovementType == "Sipariş")">Sipariş</option>
+            <option value="İptal" selected="@(filter?.MovementType == "İptal")">İptal</option>
+            <option value="İade" selected="@(filter?.MovementType == "İade")">İade</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small fw-bold">İşlemi Yapan</label>
+        <input type="text" name="PerformedBy" value="@filter?.PerformedBy" class="form-control" placeholder="Kullanıcı adı...">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small fw-bold">Başlangıç</label>
+        <input type="date" id="startDate" name="StartDate" class="form-control" value="@(filter?.StartDate?.ToString("yyyy-MM-dd"))">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small fw-bold">Bitiş</label>
+        <input type="date" id="endDate" name="EndDate" class="form-control" value="@(filter?.EndDate?.ToString("yyyy-MM-dd"))">
+    </div>
+    <div class="col-md-6 d-flex align-items-end gap-2">
         <a href="@Url.Action("StokHareketleri")" class="btn btn-outline-secondary w-50">
-            <i class="fa-solid fa-rotate-left me-2"></i>Sıfırla
+            <i class="fa-solid fa-rotate-left me-2"></i>Temizle
         </a>
         <button type="submit" class="btn btn-dark w-50">
             <i class="fa-solid fa-filter me-2"></i>Filtrele
         </button>
     </div>
 </form>
-
-<div class="accordion mb-4" id="algoAccordion">
-    <div class="accordion-item border-0 shadow-sm">
-        <h2 class="accordion-header">
-            <button class="accordion-button collapsed bg-light text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#algoCollapse">
-                <i class="fa-solid fa-code-branch me-2"></i> Depo Yerleşim Algoritması Nasıl Çalışıyor?
-            </button>
-        </h2>
-        <div id="algoCollapse" class="accordion-collapse collapse" data-bs-parent="#algoAccordion">
-            <div class="accordion-body border-top">
-                <small class="text-muted">
-                    Sistem, ürünleri <strong>hacim/desi</strong> kapasitesine göre en uygun rafa yerleştirir. 
-                    <br> - %80 ve üzeri doluluk oranına sahip raflar "tam" olarak işaretlenir.
-                    <br> - Ağır ürünler otomatik olarak zemin seviyesindeki raflara (Rack Level 1) atanır.
-                </small>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
@@ -63,7 +63,7 @@
                         <th>Tarih / Saat</th>
                         <th>İşlem Tipi</th>
                         <th>Ürün Bilgisi</th>
-                        <th>Raf / Lokasyon</th>
+                        <th>Raf</th>
                         <th class="text-center">Miktar</th>
                         <th>İşlemi Yapan</th>
                     </tr>
@@ -72,10 +72,7 @@
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">
-                                <i class="fa-solid fa-folder-open fa-2x mb-2"></i><br />
-                                Seçili tarihlerde bir hareket bulunamadı.
-                            </td>
+                            <td colspan="6" class="text-center py-4 text-muted">Kriterlere uygun hareket bulunamadı.</td>
                         </tr>
                     }
                     else
@@ -83,28 +80,16 @@
                         foreach (var log in Model)
                         {
                             <tr>
-                                <td class="text-nowrap">
-                                    <i class="fa-regular fa-calendar me-1 text-muted"></i> 
-                                    @log.MovementDate.ToString("dd.MM.yyyy HH:mm")
-                                </td>
+                                <td class="text-nowrap">@log.MovementDate.ToString("dd.MM.yyyy HH:mm")</td>
                                 <td>
-                                    @if (log.MovementType == "Mal Kabul")
-                                    {
-                                        <span class="badge bg-success">@log.MovementType</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-info text-dark">@log.MovementType</span>
-                                    }
+                                    <span class="badge @(log.QuantityChange > 0 ? "bg-success" : "bg-danger")">@log.MovementType</span>
                                 </td>
                                 <td class="fw-bold">@log.ProductName</td>
                                 <td><span class="text-primary font-monospace">@log.LocationBarcode</span></td>
                                 <td class="text-center">
-                                    <span class="badge bg-dark fs-6">
-                                        @(log.QuantityChange > 0 ? "+" + log.QuantityChange : log.QuantityChange)
-                                    </span>
+                                    <span class="badge bg-dark">@(log.QuantityChange > 0 ? "+" + log.QuantityChange : log.QuantityChange)</span>
                                 </td>
-                                <td class="text-muted"><i class="fa-solid fa-user me-1"></i> @log.PerformedBy</td>
+                                <td>@log.PerformedBy</td>
                             </tr>
                         }
                     }
@@ -116,77 +101,37 @@
 
 @if (totalPages > 1)
 {
-    <nav aria-label="Page navigation" class="mt-4">
+    <nav class="mt-4">
         <ul class="pagination justify-content-center">
-            
-            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                <a class="page-link" href="@Url.Action("StokHareketleri", new { page = currentPage - 1, startDate = startDate, endDate = endDate })">Önceki</a>
-            </li>
-
             @for (int i = 1; i <= totalPages; i++)
             {
                 <li class="page-item @(i == currentPage ? "active" : "")">
-                    <a class="page-link" href="@Url.Action("StokHareketleri", new { page = i, startDate = startDate, endDate = endDate })">@i</a>
+                    <a class="page-link" href="@Url.Action("StokHareketleri", new { 
+                        page = i, 
+                        startDate = filter?.StartDate?.ToString("yyyy-MM-dd"), 
+                        endDate = filter?.EndDate?.ToString("yyyy-MM-dd"),
+                        productName = filter?.ProductName,
+                        locationBarcode = filter?.LocationBarcode,
+                        movementType = filter?.MovementType,
+                        performedBy = filter?.PerformedBy
+                    })">@i</a>
                 </li>
             }
-
-            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                <a class="page-link" href="@Url.Action("StokHareketleri", new { page = currentPage + 1, startDate = startDate, endDate = endDate })">Sonraki</a>
-            </li>
-            
         </ul>
     </nav>
 }
 
 @section Scripts {
-<script>
-    const startInput = document.getElementById('startDate');
-    const endInput = document.getElementById('endDate');
-    const filterForm = document.getElementById('filterForm');
-
-    // Senkronizasyon fonksiyonu: min ve max kısıtlamalarını anlık ayarlar
-    function syncDateLimits() {
-        if (startInput.value) {
-            endInput.min = startInput.value; // Bitiş, başlangıçtan önce olamaz
-        } else {
-            endInput.removeAttribute('min');
+    <script>
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        
+        function syncDateLimits() {
+            if (startInput.value) endInput.min = startInput.value;
+            if (endInput.value) startInput.max = endInput.value;
         }
-
-        if (endInput.value) {
-            startInput.max = endInput.value; // Başlangıç, bitişten sonra olamaz
-        } else {
-            startInput.removeAttribute('max');
-        }
-    }
-
-    // Sayfa ilk yüklendiğinde mevcut filtrelere göre sınırları çiz
-    syncDateLimits();
-
-    // CASE 1: Kullanıcı başlangıç tarihini değiştirirse
-    startInput.addEventListener('change', function() {
         syncDateLimits();
-        if (endInput.value && endInput.value < this.value) {
-            endInput.value = this.value; // Çakışma varsa bitişi başlangıca eşitle
-        }
-    });
-
-    // CASE 2: Kullanıcı bitiş tarihini değiştirirse
-    endInput.addEventListener('change', function() {
-        syncDateLimits();
-        if (startInput.value && startInput.value > this.value) {
-            startInput.value = this.value; // Çakışma varsa başlangıcı bitişe eşitle
-        }
-    });
-
-    // CASE 3: Form Gönderilme (Submit) Güvenlik Duvarı
-    // Eğer kullanıcı HTML koduna müdahale edip geçersiz bir veri göndermeye çalışırsa son kontrol
-    filterForm.addEventListener('submit', function(e) {
-        if (startInput.value && endInput.value && startInput.value > endInput.value) {
-            // Hatalı dizilimi hissettirmeden swap'layıp (yer değiştirip) öyle sunucuya yolla
-            const temp = startInput.value;
-            startInput.value = endInput.value;
-            endInput.value = temp;
-        }
-    });
-</script>
+        startInput.addEventListener('change', syncDateLimits);
+        endInput.addEventListener('change', syncDateLimits);
+    </script>
 }

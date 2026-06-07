@@ -10,13 +10,11 @@ public class AddressController : Controller
     private readonly AgoraDbContext _context;
     public AddressController(AgoraDbContext context) => _context = context;
 
-    // Adres Listesi
     public async Task<IActionResult> Index()
     {
         
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        // Eğer claim null ise veya int'e çevrilemiyorsa hata vermesin, login'e atsın
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
         {
             
@@ -25,45 +23,46 @@ public class AddressController : Controller
 
         var addresses = await _context.UserAddresses
             .Where(a => a.UserId == userId)
-            .OrderByDescending(a => a.IsDefault) // Önce varsayılan adres görünsün
-            .ThenByDescending(a => a.CreatedAt) // Sonra en yeni eklenen
+            .OrderByDescending(a => a.IsDefault) 
+            .ThenByDescending(a => a.CreatedAt) 
             .ToListAsync();
 
         return View(addresses);
 }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(UserAddress model)
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(UserAddress model)
+{
+    var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    
+    if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
     {
-        // CS8604 hatasını önleyen güvenli ID alma
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-        {
-            return Unauthorized(); // Kullanıcı login değilse veya ID geçersizse
-        }
-
-        ModelState.Remove("User"); // Navigation property'yi validasyondan çıkar
-
-        if (ModelState.IsValid)
-        {
-            model.UserId = userId;
-            model.CreatedAt = DateTime.Now;
-
-            if (model.IsDefault)
-            {
-                var otherAddresses = await _context.UserAddresses.Where(a => a.UserId == userId).ToListAsync();
-                otherAddresses.ForEach(a => a.IsDefault = false);
-            }
-
-            _context.UserAddresses.Add(model);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        return View("Index", await _context.UserAddresses.Where(a => a.UserId == userId).ToListAsync());
+        return Unauthorized(); 
     }
+
+    ModelState.Remove("User"); 
+    ModelState.Remove("UserId"); 
+    ModelState.Remove("CreatedAt");
+
+    if (ModelState.IsValid)
+    {
+        model.UserId = userId;
+        model.CreatedAt = DateTime.Now;
+
+        if (model.IsDefault)
+        {
+            var otherAddresses = await _context.UserAddresses.Where(a => a.UserId == userId).ToListAsync();
+            otherAddresses.ForEach(a => a.IsDefault = false);
+        }
+
+        _context.UserAddresses.Add(model);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    return View("Index", await _context.UserAddresses.Where(a => a.UserId == userId).ToListAsync());
+}
 
 
   
@@ -79,7 +78,7 @@ public async Task<IActionResult> Edit(int id)
 
     if (address == null) return NotFound();
 
-    return Json(address); // Verileri modalı doldurmak için JSON olarak döneceğiz
+    return Json(address); 
 }
 
   [HttpPost]
@@ -130,7 +129,7 @@ public async Task<IActionResult> Edit(int id)
       }
 
       var address = await _context.UserAddresses
-          .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId); // Güvenlik: Sadece kendi adresini silebilir
+          .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
 
       if (address != null)
       {

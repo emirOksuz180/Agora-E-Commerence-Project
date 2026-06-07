@@ -18,5 +18,10 @@ public partial class TblIl
     public virtual ShippingRegion? Region { get; set; }
 
     public virtual ICollection<TblIlce> TblIlces { get; set; } = new List<TblIlce>();
+
+  internal string ToLower()
+  {
+    throw new NotImplementedException();
+  }
 }
 

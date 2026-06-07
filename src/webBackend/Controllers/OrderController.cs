@@ -17,9 +17,7 @@ using Microsoft.Data.SqlClient;
 namespace webBackend.Controllers;
 using System.Data;
 using System.Globalization;
-
-
-
+using Duende.IdentityServer.Extensions;
 
 [Authorize]
 public class OrderController : Controller
@@ -172,57 +170,61 @@ public async Task<ActionResult> Details(int id, DateTime? startDate, DateTime? e
     return View(order);
 }
 
-    [HttpGet]
-    public async Task<ActionResult> Checkout()
-    {   
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var username = User.Identity?.Name; 
-        
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-            return RedirectToAction("Login", "Account");
+[HttpGet]
+public async Task<ActionResult> Checkout()
+{   
+    var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var username = User.Identity?.Name; 
+    
+    if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        return RedirectToAction("Login", "Account");
 
-        // Sepeti getir
-        var cart = await _cartService.GetCart(username);
-        if (cart == null || !cart.CartItems.Any())
-        {
-            return RedirectToAction("Index", "Cart");
-        }
-
-        // Kullanıcının varsayılan adresini getir
-        var defaultAddress = await _context.UserAddresses
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.IsDefault);
-
-        // Model oluşturma (AdSoyad kaldırıldı, Ad ve Soyad eklendi)
-        var model = new OrderCreateModel
-        {
-            Ad = defaultAddress?.FirstName ?? "", // Varsa varsayılan adresten getir
-            Soyad = defaultAddress?.LastName ?? "", 
-            Email = username ?? "", // Genelde UserName email olduğu için doldurabiliriz
-            DefaultAddress = defaultAddress,
-            UseDefaultAddress = defaultAddress != null,
-            Telefon = defaultAddress?.Phone ?? "",
-            Sehir = defaultAddress?.City ?? "",
-            AdresSatiri = defaultAddress?.AddressDetail ?? "",
-            PostaKodu = defaultAddress?.ZipCode ?? ""
-        };
-
-        // 1. Şehir Listesi
-        var illerList = await _context.TblIls.OrderBy(x => x.IlAdi).ToListAsync();
-        ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi");
-
-        // 2. Kargo Firmaları
-        var carrierList = await _context.Carriers
-            .Where(x => x.IsActive == true)
-            .OrderBy(x => x.CarrierName)
-            .ToListAsync();
-
-        ViewBag.Carriers = new SelectList(carrierList, "Id", "CarrierName");
-        ViewBag.Cart = cart;
-
-        return View(model);
+    // Sepeti getir
+    var cart = await _cartService.GetCart(username);
+    if (cart == null || !cart.CartItems.Any())
+    {
+        return RedirectToAction("Index", "Cart");
     }
 
-    
+    // Kullanıcının varsayılan adresini getir
+    var defaultAddress = await _context.UserAddresses
+        .FirstOrDefaultAsync(a => a.UserId == userId && a.IsDefault);
+
+    // Model oluşturma
+    var model = new OrderCreateModel
+    {
+        Ad = defaultAddress?.FirstName ?? "", 
+        Soyad = defaultAddress?.LastName ?? "", 
+        Email = username ?? "", 
+        DefaultAddress = defaultAddress,
+        UseDefaultAddress = defaultAddress != null,
+        Telefon = defaultAddress?.Phone ?? "",
+        Sehir = defaultAddress?.City ?? "",
+        AdresSatiri = defaultAddress?.AddressDetail ?? "",
+        PostaKodu = defaultAddress?.ZipCode ?? "",
+        Ilce = defaultAddress?.District ?? ""
+    };
+
+    // 1. Şehir Listesi
+    var illerList = await _context.TblIls.OrderBy(x => x.IlAdi).ToListAsync();
+    ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi", model.Sehir);
+
+    var ilcelerList = await _context.TblIlces.OrderBy(x => x.IlceAdi).ToListAsync();
+    ViewBag.Ilceler = new SelectList(ilcelerList , "IlceAdi" , "IlceAdi" , model.Sehir);
+
+    // 2. Kargo Firmaları
+    var carrierList = await _context.Carriers
+        .Where(x => x.IsActive == true)
+        .OrderBy(x => x.CarrierName)
+        .ToListAsync();
+
+    ViewBag.Carriers = new SelectList(carrierList, "Id", "CarrierName");
+    ViewBag.Cart = cart;
+
+    return View(model);
+}
+
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(OrderCreateModel model)
@@ -235,9 +237,29 @@ public async Task<ActionResult> Details(int id, DateTime? startDate, DateTime? e
             return RedirectToAction("Index", "Cart");
         }
 
-        // --- FORM DOĞRULAMA (Validation) BÖLÜMÜ ---
         if (model.UseDefaultAddress)
         {
+            if (string.IsNullOrEmpty(model.Sehir) || string.IsNullOrEmpty(model.Ilce))
+            {
+                var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    var defaultAddress = await _context.UserAddresses
+                        .FirstOrDefaultAsync(ua => ua.UserId == userId && ua.IsDefault);
+
+                    if (defaultAddress != null)
+                    {
+                        model.Ad = defaultAddress.FirstName;
+                        model.Soyad = defaultAddress.LastName;
+                        model.Telefon = defaultAddress.Phone;
+                        model.Sehir = defaultAddress.City;
+                        model.Ilce = defaultAddress.District;
+                        model.AdresSatiri = defaultAddress.AddressDetail;
+                        model.PostaKodu = defaultAddress.ZipCode;
+                    }
+                }
+            }
+
             ModelState.Remove("Ad");
             ModelState.Remove("Soyad");
             ModelState.Remove("Email");
@@ -246,6 +268,15 @@ public async Task<ActionResult> Details(int id, DateTime? startDate, DateTime? e
             ModelState.Remove("AdresSatiri");
             ModelState.Remove("PostaKodu");
             ModelState.Remove("Ilce");
+        }
+
+        string checkCity = model.Sehir;
+        string checkDistrict = model.Ilce;
+
+        if (await IsRegionRestricted(model.SelectedCarrierId, checkCity, checkDistrict))
+        {
+            ModelState.AddModelError("", "Seçtiğiniz kargo firması bu bölgeye teslimat yapmamaktadır.");
+            return await PrepareAndReturnView(model, cart);
         }
 
         if (!string.IsNullOrEmpty(model.CartNumber))
@@ -258,38 +289,34 @@ public async Task<ActionResult> Details(int id, DateTime? startDate, DateTime? e
             }
         }
 
-        
         if (ModelState.IsValid)
         {
             string userIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             int.TryParse(userIdClaim, out int userId);
 
-            // Bütün ağır yükü CheckoutService üstleniyor
             var result = await _checkoutService.ProcessCheckoutAsync(model, cart, userId, username, userIp);
 
             if (result.IsSuccess)
             {
-                // İşlem başarılıysa doğrudan onay sayfasına git
                 return RedirectToAction("Completed", new { orderId = result.OrderId });
             }
 
-            // Başarısızsa servisten gelen hatayı ekrana basmak üzere ModelState'e ekle
             ModelState.AddModelError("", result.ErrorMessage ?? "Ödeme işlemi sırasında bir hata oluştu.");
         }
 
-        // --- HATA VARSA VEYA FORM EKSİKSE EKRANI TEKRAR YÜKLE ---
-        var illerList = await _context.TblIls.OrderBy(x => x.IlAdi).ToListAsync();
-        var carriers = await _context.Carriers.Where(x => x.IsActive == true).ToListAsync();
-        
-        ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi", model.Sehir);
-        ViewBag.Carriers = new SelectList(carriers, "Id", "CarrierName", model.SelectedCarrierId);
-        ViewBag.Cart = cart;
-
-        return View(model);
+        return await PrepareAndReturnView(model, cart);
     }
     
     
+    private async Task<bool> IsRegionRestricted(int carrierId, string cityName, string districtName)
+    {
+        
+        return await _context.CarrierDistrictExclusions
+            .AnyAsync(x => x.CarrierId == carrierId && 
+                        x.City.IlAdi == cityName && 
+                        (x.DistrictId == null || x.District.IlceAdi == districtName));
+    }
     
     
     
@@ -314,10 +341,21 @@ public async Task<ActionResult> Details(int id, DateTime? startDate, DateTime? e
         var illerList = await _context.TblIls.OrderBy(x => x.IlAdi).ToListAsync();
         var carriers = await _context.Carriers.Where(x => x.IsActive == true).ToListAsync();
         
+        List<TblIlce> ilcelerList = new List<TblIlce>();
+        if (!string.IsNullOrEmpty(model.Sehir))
+        {
+            var city = await _context.TblIls.FirstOrDefaultAsync(x => x.IlAdi == model.Sehir);
+            if (city != null)
+            {
+                ilcelerList = await _context.TblIlces.Where(x => x.IlId == city.Id).OrderBy(x => x.IlceAdi).ToListAsync();
+            }
+        }
+
         ViewBag.Iller = new SelectList(illerList, "IlAdi", "IlAdi", model.Sehir);
+        ViewBag.Ilceler = new SelectList(ilcelerList, "IlceAdi", "IlceAdi", model.Ilce);
         ViewBag.Carriers = new SelectList(carriers, "Id", "CarrierName", model.SelectedCarrierId);
         ViewBag.Cart = cart;
-        
+
         return View(model);
     }
     
@@ -336,69 +374,66 @@ public async Task<ActionResult> Details(int id, DateTime? startDate, DateTime? e
     }
 
 
-[HttpGet]
-public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, string? districtName)
-{
-    var username = User.Identity?.Name;
-    var cart = await _cartService.GetCart(username!);
-
-    if (cart == null) return Json(new { success = false, message = "Sepet bulunamadı." });
-
-    // 1. Dinamik Şehir ve İlçe ID'lerini bulalım (SP'ye doğru parametreleri göndermek için)
-    int cityId = 0;
-    int districtId = 0;
-
-    if (!string.IsNullOrEmpty(cityName))
+    [HttpGet]
+    public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, string? districtName)
     {
-        var city = await _context.TblIls.FirstOrDefaultAsync(x => x.IlAdi == cityName);
-        if (city != null)
+        var username = User.Identity?.Name;
+        var cart = await _cartService.GetCart(username!);
+
+        if (cart == null) return Json(new { success = false, message = "Sepet bulunamadı." });
+
+        if (await IsRegionRestricted(carrierId, cityName!, districtName!))
         {
-            cityId = city.Id;
-            if (!string.IsNullOrEmpty(districtName))
+            return Json(new { success = false, message = "Bu kargo firması seçtiğiniz bölgeye gönderim yapmamaktadır." });
+        }
+
+        int cityId = 0;
+        int districtId = 0;
+
+        if (!string.IsNullOrEmpty(cityName))
+        {
+            var city = await _context.TblIls.FirstOrDefaultAsync(x => x.IlAdi == cityName);
+            if (city != null)
             {
-                var district = await _context.TblIlces.FirstOrDefaultAsync(x => x.IlId == city.Id && x.IlceAdi == districtName);
-                if (district != null) districtId = district.Id;
+                cityId = city.Id;
+                if (!string.IsNullOrEmpty(districtName))
+                {
+                    var district = await _context.TblIlces.FirstOrDefaultAsync(x => x.IlId == city.Id && x.IlceAdi == districtName);
+                    if (district != null) districtId = district.Id;
+                }
             }
         }
+
+        var pCartId = new SqlParameter("@CartId", SqlDbType.Int) { Value = cart.CartId };
+        var pDistrictId = new SqlParameter("@DistrictId", SqlDbType.Int) { Value = districtId };
+        var pCarrierId = new SqlParameter("@SelectedCarrierId", SqlDbType.Int) { Value = carrierId };
+        
+        var pOutFinalPrice = new SqlParameter("@FinalShippingPrice", SqlDbType.Decimal) 
+        { 
+            Direction = ParameterDirection.Output,
+            Precision = 18, 
+            Scale = 2 
+        };
+
+        var pOutIsFreeShipping = new SqlParameter("@IsFreeShipping", SqlDbType.Bit)
+        {
+            Direction = ParameterDirection.Output
+        };
+
+        await _context.Database.ExecuteSqlRawAsync(
+            "EXEC [dbo].[sp_CalculateShippingProfitability] @CartId, @DistrictId, @SelectedCarrierId, @FinalShippingPrice OUTPUT, @IsFreeShipping OUTPUT",
+            pCartId, pDistrictId, pCarrierId, pOutFinalPrice, pOutIsFreeShipping);
+
+        decimal finalShippingPrice = (pOutFinalPrice.Value != DBNull.Value) ? (decimal)pOutFinalPrice.Value : 0;
+        bool isFreeShipping = (pOutIsFreeShipping.Value != DBNull.Value) && (bool)pOutIsFreeShipping.Value;
+
+        return Json(new { 
+            success = true, 
+            isFreeShipping = isFreeShipping,     
+            shippingPrice = finalShippingPrice,  
+            totalPrice = (decimal)cart.Toplam + finalShippingPrice 
+        });
     }
-
-    // 2. Kârlılık ve Kargo Hesaplayan Yeni Stored Procedure Parametrelerini Hazırlıyoruz
-    var pCartId = new SqlParameter("@CartId", SqlDbType.Int) { Value = cart.CartId };
-    var pDistrictId = new SqlParameter("@DistrictId", SqlDbType.Int) { Value = districtId };
-    var pCarrierId = new SqlParameter("@SelectedCarrierId", SqlDbType.Int) { Value = carrierId };
-    
-    // OUTPUT Parametresi: SP içerisinden hesaplanıp dönecek nihai kargo fiyatı (0 veya gerçek maliyet)
-    var pOutFinalPrice = new SqlParameter("@FinalShippingPrice", SqlDbType.Decimal) 
-    { 
-        Direction = ParameterDirection.Output,
-        Precision = 18, 
-        Scale = 2 
-    };
-
-    // OUTPUT Parametresi: SP'den dönecek bedava kargo bayrağı (BIT -> bool)
-    var pOutIsFreeShipping = new SqlParameter("@IsFreeShipping", SqlDbType.Bit)
-    {
-        Direction = ParameterDirection.Output
-    };
-
-    // 3. Yeni Kârlılık SP'sini Tetikliyoruz
-    // (Not: SP'niz @DistrictId bekliyor, CityId'yi SP içinde kullanmadığınız için doğrudan uygun parametrelerle eşleştirdik)
-    await _context.Database.ExecuteSqlRawAsync(
-        "EXEC [dbo].[sp_CalculateShippingProfitability] @CartId, @DistrictId, @SelectedCarrierId, @FinalShippingPrice OUTPUT, @IsFreeShipping OUTPUT",
-        pCartId, pDistrictId, pCarrierId, pOutFinalPrice, pOutIsFreeShipping);
-
-    // 4. SP Çıktı değerlerini güvenli bir şekilde C# değişkenlerine cast ediyoruz
-    decimal finalShippingPrice = (pOutFinalPrice.Value != DBNull.Value) ? (decimal)pOutFinalPrice.Value : 0;
-    bool isFreeShipping = (pOutIsFreeShipping.Value != DBNull.Value) && (bool)pOutIsFreeShipping.Value;
-
-    
-    return Json(new { 
-        success = true, 
-        isFreeShipping = isFreeShipping,     
-        shippingPrice = finalShippingPrice,   // Kârlılık sağlandıysa 0, sağlanmadıysa gerçek maliyet
-        totalPrice = (decimal)cart.Toplam + finalShippingPrice 
-    });
-}
     
     
     
@@ -431,9 +466,7 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
         };
     }
 
-    // ==========================================
-    // 1. SİPARİŞ LİSTELEME
-    // ==========================================
+    
     public async Task<ActionResult> OrderList(DateTime? startDate, DateTime? endDate, string range)
     {
         var username = User.Identity?.Name;
@@ -487,9 +520,7 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
         return View(orders);
     }
 
-    // ==========================================
-    // 2. ADMİN PANELİ STATÜ GÜNCELLEME (İptal ve İade Dahil)
-    // ==========================================
+ 
         [HttpPost]
         [Authorize(Policy = "Order.Edit")]
         [ValidateAntiForgeryToken] 
@@ -542,7 +573,7 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
                         }
 
                         // Ödeme iadesi başarılı ise stokları geri yükle
-                        await StoklariGeriYukleAsync(order);
+                        await StoklariGeriYukleAsync(order , "İade");
                         TempData["SuccessMessage"] = $"#{orderId} nolu siparişin iadesi onaylandı, ücret karta aktarıldı ve stoklar geri yüklendi.";
                     }
 
@@ -570,7 +601,7 @@ public async Task<JsonResult> GetShippingPrice(int carrierId, string? cityName, 
                         }
 
                         // Ödeme iptali başarılı ise stokları geri yükle
-                        await StoklariGeriYukleAsync(order);
+                        await StoklariGeriYukleAsync(order , "İptal");
                         TempData["SuccessMessage"] = $"#{orderId} nolu sipariş admin tarafından iptal edildi, ücret iade edildi ve stoklar güncellendi.";
                     }
                     else
@@ -638,7 +669,7 @@ public async Task<IActionResult> CancelOrder(int orderId)
 
     if (order == null) return NotFound();
 
-    // Güvenlik Kontrolü (Username bazlı eşitleme yapıldı)
+    // Güvenlik Kontrolü
     string currentUsername = User.Identity?.Name;
     if (!string.Equals(order.Username, currentUsername, StringComparison.OrdinalIgnoreCase) && !User.IsInRole("Admin"))
     {
@@ -667,7 +698,6 @@ public async Task<IActionResult> CancelOrder(int orderId)
                         Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1"
                     };
 
-                    // HATA BURADAYDI: await eklendi
                     Cancel result = await Cancel.Create(request, GetIyzipayOptions());
 
                     if (result.Status != Status.SUCCESS.ToString())
@@ -677,10 +707,13 @@ public async Task<IActionResult> CancelOrder(int orderId)
                     }
                 }
 
-                // Statüyü İptal Edildi (9) yap ve Stokları SP ile geri yükle
+                // Statüyü İptal Edildi (9) yap
                 order.StatusId = 9; 
-                await StoklariGeriYukleAsync(order);
+                
+                // Stokları geri yükle ve Logla (Yeni parametre ile "İptal" olarak işaretliyoruz)
+                await StoklariGeriYukleAsync(order, "İptal");
 
+                // Veritabanına kaydet (Hem statü değişimi hem de loglar buraya kaydedilir)
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -699,18 +732,35 @@ public async Task<IActionResult> CancelOrder(int orderId)
     return RedirectToAction(nameof(Details), new { id = orderId });
 }
 
-    // ==========================================
-    // YARDIMCI METOT: STOKLARI GÜVENLİ TETİKLEME
-    // ==========================================
-    private async Task StoklariGeriYukleAsync(Order order)
+  private async Task StoklariGeriYukleAsync(Order order)
+  {
+    throw new NotImplementedException();
+  }
+
+    private async Task StoklariGeriYukleAsync(Order order, string movementType)
     {
         foreach (var item in order.OrderItems)
         {
+            // 1. Stok artırma SP çağrısı
             await _context.Database.ExecuteSqlRawAsync(
                 "EXEC sp_SiparisIptalIcinStokIade @p0, @p1", item.UrunId, item.Miktar);
+
+            // 2. Loglama (StockMovements tablosuna ekleme)
+            var stock = await _context.Stocks.FirstOrDefaultAsync(s => s.ProductId == item.UrunId);
+            if (stock != null)
+            {
+                _context.StockMovements.Add(new StockMovement
+                {
+                    StockId = stock.StockId, 
+                    MovementType = movementType, // "İptal" veya "İade"
+                    QuantityChange = item.Miktar, // Stoğa geri girdiği için pozitif
+                    RelatedReferenceId = order.Id,
+                    MovementDate = DateTime.Now,
+                    PerformedBy = User.Identity?.Name ?? "Sistem"
+                });
+            }
         }
     }
-
 
 }
 

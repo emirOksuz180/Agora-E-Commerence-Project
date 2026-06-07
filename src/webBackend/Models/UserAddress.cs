@@ -54,6 +54,5 @@ public partial class UserAddress
     [Display(Name = "Posta Kodu")]
     public string? ZipCode { get; set; }
 
-    // Navigation Property
     public virtual AppUser User { get; set; } = null!;
 }

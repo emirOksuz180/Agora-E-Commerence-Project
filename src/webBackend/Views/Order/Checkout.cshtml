@@ -200,7 +200,7 @@
 
                                 </div>
 
-                                @* <div class="col-md-4">
+                                 <div class="col-md-4">
 
                                     <label asp-for="Ilce"
                                            class="form-label fw-semibold">
@@ -221,7 +221,7 @@
                                     <span asp-validation-for="Ilce"
                                           class="text-danger small"></span>
 
-                                </div> *@
+                                </div> 
 
                                 <div class="col-md-4">
 
@@ -511,182 +511,146 @@
 </section>
 
 @section Scripts {
+
     <script>
-        $(document).ready(function () {
+                $(document).ready(function () {
+const $chkUseDefault = $('#chkUseDefault');
+const $deliverySection = $('#deliveryAddressSection');
+const $deliveryInputs = $deliverySection.find('input, select, textarea');
+const $cardInput = $('#CartNumber');
+const $cardIcon = $('#card-icon');
+const $luhnError = $('#luhn-error');
+const $shippingAmount = $('#shipping-amount');
+const $grandTotal = $('#grand-total');
+const $subtotal = $('#subtotal');
 
-            // Sayfa açıldığında formların başlangıç durumunu (disabled/required) switch'e göre ayarla
-            initAddressFormState();
+        toggleAddressFields($chkUseDefault.is(':checked'), false);
 
-            // =========================
-            // ADRES TOGGLE MANTIĞI
-            // =========================
-            $('#chkUseDefault').on('change', function () {
-                const isChecked = this.checked;
-                const $section = $('#deliveryAddressSection');
-
-                if (isChecked) {
-                    $section.slideUp(250);
-                    $section.find('input, select, textarea')
-                        .prop('disabled', true)
-                        .removeAttr('required');
-                    $section.find('.text-danger').text('');
-                    $section.find('.is-invalid').removeClass('is-invalid');
-                } else {
-                    $section.slideDown(250);
-                    $section.find('input, select, textarea').prop('disabled', false);
-                }
-
-                calculateShipping();
-            });
-
-            function initAddressFormState() {
-                const isChecked = $('#chkUseDefault').is(':checked');
-                const $section = $('#deliveryAddressSection');
-                if (isChecked) {
-                    $section.find('input, select, textarea').prop('disabled', true).removeAttr('required');
-                }
-            }
-
-            // =========================
-            // KART NUMARASI & LUHN
-            // =========================
-            const cardInput = $('#CartNumber');
-            const cardIcon = $('#card-icon');
-            const luhnError = $('#luhn-error');
-
-            cardInput.on('input', function (e) {
-                let value = e.target.value.replace(/\D/g, '');
-                let formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
-
-                $(this).val(formatted);
-
-                if (value.startsWith('4')) {
-                    cardIcon.attr('class', 'fa-brands fa-cc-visa text-primary');
-                }
-                else if (/^(5[1-5]|2[2-7])/.test(value)) {
-                    cardIcon.attr('class', 'fa-brands fa-cc-mastercard text-danger');
-                }
-                else {
-                    cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
-                }
-
-                if (value.length >= 13) {
-                    if (checkLuhn(value)) {
-                        luhnError.hide();
-                        $(this).removeClass('is-invalid').addClass('is-valid');
-                    } else {
-                        luhnError.text('Geçersiz kart numarası!').show();
-                        $(this).addClass('is-invalid').removeClass('is-valid');
-                    }
-                }
-            });
-
-            function checkLuhn(n) {
-                let sum = 0;
-                for (let i = 0; i < n.length; i++) {
-                    let digit = parseInt(n[n.length - 1 - i]);
-                    if (i % 2 === 1) {
-                        digit *= 2;
-                        if (digit > 9) digit -= 9;
-                    }
-                    sum += digit;
-                }
-                return sum % 10 === 0;
-            }
-
-            // =========================
-            // KARGO HESAPLAMA
-            // =========================
-            $(document).on('change', '#SelectedCarrierId, #ddlSehir, #ddlIlce', function () {
-                calculateShipping();
-            });
-
-            function calculateShipping() {
-                const carrierId = $('#SelectedCarrierId').val();
-                let city = "";
-                let district = "";
-
-                if ($('#chkUseDefault').is(':checked')) {
-                    city = '@Model.DefaultAddress?.City';
-                    district = '@Model.DefaultAddress?.District';
-                } else {
-                    // ID yerine string adı göndermek için option:selected kullandık
-                    city = $('#ddlSehir option:selected').val() ? $('#ddlSehir option:selected').text().trim() : "";
-                    district = $('#ddlIlce option:selected').val() ? $('#ddlIlce option:selected').text().trim() : "";
-                }
-
-                if (carrierId && city) {
-                    $.get('/Order/GetShippingPrice', {
-                        carrierId: carrierId,
-                        cityName: city,
-                        districtName: district
-                    })
-                    .done(function (res) {
-                        if (res.success) {
-                            // ==========================================
-                            // SP'DEN GELEN KÂRLILIK VE GÖRÜNÜM KONTROLÜ
-                            // ==========================================
-                            if (res.isFreeShipping === true) {
-                                // Eğer kârlılık karşılandıysa kargo satırını yeşil yapıp "Ücretsiz" yazdırıyoruz
-                                $('#shipping-amount')
-                                    .text('Ücretsiz')
-                                    .removeClass('text-secondary')
-                                    .addClass('text-success fw-bold');
-                            } else {
-                                // Kârlılık karşılanmadıysa SP'den gelen normal ücreti basıyoruz
-                                $('#shipping-amount')
-                                    .text(res.shippingPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL')
-                                    .removeClass('text-success fw-bold')
-                                    .addClass('text-secondary');
-                            }
-
-                            // Genel Toplam alanını güncelle (Salt + kargo fiyata göre)
-                            $('#grand-total').text(
-                                res.totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL'
-                            );
-
-                        } else {
-                            resetPrices();
-                        }
-                    })
-                    .fail(function () {
-                        resetPrices();
-                    });
-                } else {
-                    resetPrices();
-                }
-            }
-
-            function resetPrices() {
-                $('#shipping-amount')
-                    .text('0,00 TL')
-                    .removeClass('text-success fw-bold')
-                    .addClass('text-secondary');
-                $('#grand-total').text($('#subtotal').text());
-            }
-
-            // İlk yükleme kontrolü
-            if ($('#SelectedCarrierId').val()) {
-                calculateShipping();
-            }
-
-            // =========================
-            // FORM VALIDATION
-            // =========================
-            $('#checkoutForm').on('submit', function (e) {
-                const isDefault = $('#chkUseDefault').is(':checked');
-                const validator = $(this).validate();
-
-                if (isDefault) {
-                    validator.settings.ignore = "#deliveryAddressSection *";
-                } else {
-                    validator.settings.ignore = ":hidden";
-                }
-
-                if (!$(this).valid()) {
-                    e.preventDefault();
-                }
-            });
+        $chkUseDefault.on('change', function () {
+            toggleAddressFields(this.checked, true);
         });
+
+        function toggleAddressFields(isChecked, shouldCalculate) {
+            if (isChecked) {
+                $deliverySection.slideUp(250);
+                $deliveryInputs.prop('disabled', true).removeAttr('required');
+                $deliverySection.find('.text-danger').text('');
+                $deliverySection.find('.is-invalid').removeClass('is-invalid');
+            } else {
+                $deliverySection.slideDown(250);
+                $deliveryInputs.prop('disabled', false);
+            }
+            
+            if (shouldCalculate) calculateShipping();
+        }
+
+        $('#ddlSehir').on('change', function () {
+            const cityName = $(this).val();
+            const $ddlIlce = $('#ddlIlce');
+            $ddlIlce.empty().append('<option value="">İlçe Seçiniz</option>');
+            
+            if (cityName) {
+                $.get('/Order/GetDistricts', { cityName: cityName })
+                    .done(function (data) {
+                        $.each(data, function (index, item) {
+                            $ddlIlce.append($('<option>', { value: item.text, text: item.text }));
+                        });
+                    });
+            }
+            calculateShipping();
+        });
+
+        $cardInput.on('input', function (e) {
+            let value = e.target.value.replace(/\D/g, '');
+            let formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+            $(this).val(formatted);
+
+            if (value.startsWith('4')) {
+                $cardIcon.attr('class', 'fa-brands fa-cc-visa text-primary');
+            } else if (/^(5[1-5]|2[2-7])/.test(value)) {
+                $cardIcon.attr('class', 'fa-brands fa-cc-mastercard text-danger');
+            } else {
+                $cardIcon.attr('class', 'fa-solid fa-credit-card text-muted');
+            }
+
+            if (value.length >= 13) {
+                if (checkLuhn(value)) {
+                    $luhnError.hide();
+                    $(this).removeClass('is-invalid').addClass('is-valid');
+                } else {
+                    $luhnError.text('Geçersiz kart numarası!').show();
+                    $(this).addClass('is-invalid').removeClass('is-valid');
+                }
+            }
+        });
+
+        function checkLuhn(n) {
+            let sum = 0;
+            for (let i = 0; i < n.length; i++) {
+                let digit = parseInt(n[n.length - 1 - i]);
+                if (i % 2 === 1) {
+                    digit *= 2;
+                    if (digit > 9) digit -= 9;
+                }
+                sum += digit;
+            }
+            return sum % 10 === 0;
+        }
+
+        $(document).on('change', '#SelectedCarrierId, #ddlSehir, #ddlIlce', calculateShipping);
+
+        function calculateShipping() {
+            const carrierId = $('#SelectedCarrierId').val();
+            
+            const isDefault = $chkUseDefault.is(':checked');
+            const city = isDefault ? '@Model.DefaultAddress?.City' : $('#ddlSehir option:selected').text().trim();
+            const district = isDefault ? '@Model.DefaultAddress?.District' : $('#ddlIlce option:selected').text().trim();
+
+            if (carrierId && city) {
+                $.get('/Order/GetShippingPrice', {
+                    carrierId: carrierId,
+                    cityName: city,
+                    districtName: district
+                })
+                .done(function (res) {
+                    if (res.success) {
+                        if (res.isFreeShipping) {
+                            $shippingAmount.text('Ücretsiz').removeClass('text-secondary').addClass('text-success fw-bold');
+                        } else {
+                            $shippingAmount.text(res.shippingPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL')
+                                .removeClass('text-success fw-bold').addClass('text-secondary');
+                        }
+                        $grandTotal.text(res.totalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL');
+                    } else {
+                        resetPrices();
+                    }
+                })
+                .fail(resetPrices);
+            } else {
+                resetPrices();
+            }
+        }
+
+        function resetPrices() {
+            $shippingAmount.text('0,00 TL').removeClass('text-success fw-bold').addClass('text-secondary');
+            $grandTotal.text($subtotal.text());
+        }
+
+        if ($('#SelectedCarrierId').val()) {
+            calculateShipping();
+        }
+
+        $('#checkoutForm').on('submit', function (e) {
+            const validator = $(this).validate();
+            validator.settings.ignore = $chkUseDefault.is(':checked') ? "#deliveryAddressSection *" : ":hidden";
+
+            if (!$(this).valid()) {
+                e.preventDefault();
+            }
+        });
+    });
     </script>
+
+
+
 }

@@ -6,7 +6,7 @@ namespace webBackend.Models
         public string ProductName { get; set; } = string.Empty;
         public string LocationBarcode { get; set; } = string.Empty;
 
-        // StockMovement modelinle birebir aynı isimler
+        
         public string MovementType { get; set; } = string.Empty;
         public int QuantityChange { get; set; }
         public DateTime MovementDate { get; set; }

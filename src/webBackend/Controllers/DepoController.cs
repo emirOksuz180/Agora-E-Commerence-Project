@@ -109,94 +109,104 @@ namespace webBackend.Controllers
 
 
 
-        public async Task<IActionResult> StokHareketleri(int page = 1, DateTime? startDate = null, DateTime? endDate = null)
+       [HttpGet]
+[Authorize(Policy = "Warehouse.View")]
+public async Task<IActionResult> StokHareketleri(StokHareketFilterViewModel filter, int page = 1)
+{
+    int pageSize = 20;
+
+    DateTime start = filter.StartDate ?? DateTime.Today.AddDays(-30);
+    DateTime end = filter.EndDate ?? DateTime.Today;
+
+    if (start > end)
+    {
+        var temp = start;
+        start = end;
+        end = temp;
+    }
+
+    DateTime endOfPeriod = end.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
+
+    var query = _context.StockMovements
+        .Include(sm => sm.Stock).ThenInclude(s => s.Product)
+        .Include(sm => sm.Stock).ThenInclude(s => s.Location)
+        .AsQueryable();
+
+    query = query.Where(sm => sm.MovementDate >= start && sm.MovementDate <= endOfPeriod);
+
+    if (!string.IsNullOrEmpty(filter.ProductName))
+        query = query.Where(sm => sm.Stock.Product.ProductName.Contains(filter.ProductName));
+
+    if (!string.IsNullOrEmpty(filter.LocationBarcode))
+        query = query.Where(sm => sm.Stock.Location.LocationBarcode.Contains(filter.LocationBarcode));
+
+    if (!string.IsNullOrEmpty(filter.MovementType))
+        query = query.Where(sm => sm.MovementType == filter.MovementType);
+
+    if (!string.IsNullOrEmpty(filter.PerformedBy))
+        query = query.Where(sm => sm.PerformedBy.Contains(filter.PerformedBy));
+
+    query = query.OrderByDescending(sm => sm.MovementId);
+
+    int totalItems = await query.CountAsync();
+    int totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+    var hareketler = await query
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(sm => new StokHareketViewModel
         {
-            int pageSize = 20;
+            ProductName = sm.Stock.Product.ProductName ?? "Tanımsız Ürün",
+            LocationBarcode = sm.Stock.Location.LocationBarcode ?? "Belirtilmemiş",
+            MovementType = sm.MovementType,
+            QuantityChange = sm.QuantityChange,
+            MovementDate = sm.MovementDate ?? DateTime.Now,
+            PerformedBy = sm.PerformedBy ?? "Sistem"
+        })
+        .ToListAsync();
 
-            // 1. Saat karmaşasını önlemek için DateTime.Today (00:00:00) kullanıyoruz
-            DateTime start = startDate?.Date ?? DateTime.Today.AddDays(-30);
-            DateTime end = endDate?.Date ?? DateTime.Today;
+    ViewBag.CurrentPage = page;
+    ViewBag.TotalPages = totalPages;
+    ViewBag.Filter = filter;
 
-            // 2. Tüm Caseler İçin Tarih Swap Kontrolü
-            if (start > end)
-            {
-                var temp = start;
-                start = end;
-                end = temp;
-            }
-
-            // 3. Bitiş tarihini günün son saniyesine (23:59:59) çekiyoruz
-            // Böylece seçilen bitiş günündeki tüm saat dilimleri sorguya dahil olur
-            DateTime endOfPeriod = end.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
-
-            // 4. Sorguyu günün son saniyesine göre filtreliyoruz
-            var query = _context.Set<StockMovement>()
-                .Include(sm => sm.Stock).ThenInclude(s => s.Product)
-                .Include(sm => sm.Stock).ThenInclude(s => s.Location)
-                .Where(sm => sm.MovementDate >= start && sm.MovementDate <= endOfPeriod)
-                .OrderByDescending(sm => sm.MovementId);
-
-            // Toplam kayıt sayısı ve sayfalama
-            int totalItems = await query.CountAsync();
-            int totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-
-            var hareketler = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(sm => new StokHareketViewModel
-                {
-                    ProductName = sm.Stock.Product.ProductName ?? "Tanımsız Ürün",
-                    LocationBarcode = sm.Stock.Location.LocationBarcode!,
-                    MovementType = sm.MovementType,
-                    QuantityChange = sm.QuantityChange,
-                    MovementDate = sm.MovementDate ?? DateTime.Now,
-                    PerformedBy = sm.PerformedBy ?? "Sistem"
-                })
-                .ToListAsync();
-
-            ViewBag.CurrentPage = page;
-            ViewBag.TotalPages = totalPages;
-            
-            
-            ViewBag.StartDate = start.ToString("yyyy-MM-dd");
-            ViewBag.EndDate = end.ToString("yyyy-MM-dd");
-
-            return View(hareketler);
-        }
+    return View(hareketler);
+}
 
 
 
 
 
       [HttpGet]
-[Authorize(Policy = "Warehouse.View")] // Menüdeki görünürlük yetkisiyle aynı olmalı
-public async Task<IActionResult> StokYonetimi()
-{
-    try
+    [Authorize(Policy = "Warehouse.View")]
+    public async Task<IActionResult> StokYonetimi()
     {
-        // LINQ Join ile Stocks, Products ve WarehouseLocations tablolarını birleştirip ViewModel'e haritalıyoruz
-        var stokListesi = await (from s in _context.Stocks
-                                 join p in _context.Products on s.ProductId equals p.ProductId
-                                 join l in _context.WarehouseLocations on s.LocationId equals l.LocationId
-                                 // GÜNCELLEME: Hem raf aktif olmalı hem de stok miktarı sıfırdan büyük olmalı
-                                 where l.IsActive == true && s.AvailableQuantity > 0 
-                                 select new StockListViewModel
-                                 {
-                                     ProductId = s.ProductId,
-                                     ProductName = p.ProductName, 
-                                     LocationBarcode = l.LocationBarcode!,
-                                     AvailableQuantity = s.AvailableQuantity
-                                 }).ToListAsync();
+        try
+        {
+            var rawData = await _context.Database.SqlQueryRaw<RawStockResult>("EXEC sp_GetStockList").ToListAsync();
 
-        return View(stokListesi);
+            var groupedStocks = rawData
+                .GroupBy(x => new { x.ProductId, x.ProductName })
+                .Select(g => new StockGroupViewModel
+                {
+                    ProductId = g.Key.ProductId,
+                    ProductName = g.Key.ProductName,
+                    TotalAvailableQuantity = g.Sum(x => x.AvailableQuantity),
+                    Locations = g.Select(x => new LocationDetailViewModel
+                    {
+                        LocationBarcode = x.LocationBarcode,
+                        Quantity = x.AvailableQuantity
+                    }).ToList()
+                })
+                .ToList();
+
+            return View(groupedStocks);
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = "Stok listesi yüklenirken bir hata oluştu: " + ex.Message;
+            return View(new List<StockGroupViewModel>());
+        }
     }
-    catch (Exception ex)
-    {
-        // Hata durumunda boş liste gönder veya logla
-        TempData["ErrorMessage"] = "Stok listesi yüklenirken bir hata oluştu: " + ex.Message;
-        return View(new List<StockListViewModel>());
-    }
-}
 
 
 
